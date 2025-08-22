@@ -51,11 +51,11 @@ else
 fi
 
 # Initiate podman Volume with correct permissions
-if [[ "$CONTAINER_TOOL" == "podman" ]]; then 
+if [[ "$CONTAINER_TOOL" == "podman" ]]; then
     # Add ipc host to deal with an SHM issue on some machines.
     PODMAN_FLAGS=(
         --userns keep-id:uid=$ZWIFT_UID,gid=$ZWIFT_GID
-        --ipc host 
+        --ipc host
     )
 fi
 
@@ -68,7 +68,10 @@ cleanup()
 }
 
 
-$CONTAINER_TOOL build --force-rm -t $BUILD_NAME $SCRIPT_DIR/../.
+$CONTAINER_TOOL build \
+            --build-arg="WINE_VERSION=" \
+            --build-arg="WINETRICKS_VERSION=20250102" \
+            --force-rm -t $BUILD_NAME $SCRIPT_DIR/../.
 $CONTAINER_TOOL run ${GENERAL_FLAGS[@]} \
     $VGA_DEVICE_FLAG \
     ${PODMAN_FLAGS[@]} \
