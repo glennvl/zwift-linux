@@ -68,10 +68,7 @@ cleanup()
 }
 
 
-$CONTAINER_TOOL build \
-            --build-arg="WINE_VERSION=" \
-            --build-arg="WINETRICKS_VERSION=20250102" \
-            --force-rm -t $BUILD_NAME $SCRIPT_DIR/../.
+$CONTAINER_TOOL build --force-rm -t $BUILD_NAME $SCRIPT_DIR/../.
 $CONTAINER_TOOL run ${GENERAL_FLAGS[@]} \
     $VGA_DEVICE_FLAG \
     ${PODMAN_FLAGS[@]} \
