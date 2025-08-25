@@ -22,8 +22,8 @@ ARG DEBIAN_VERSION
 # make sure to add "=" to the start, comment out for latest
 #    WINE_VERSION="=9.9~bookworm-1"
 ARG WINE_BRANCH="devel"
-ARG WINE_VERSION="=9.9~${DEBIAN_VERSION}-1"
-ARG WINETRICKS_VERSION=20240105
+ARG WINE_VERSION="=10.13~${DEBIAN_VERSION}-1"
+ARG WINETRICKS_VERSION=20250102
 
 RUN dpkg --add-architecture i386
 
@@ -38,7 +38,7 @@ RUN dpkg --add-architecture i386
 # - gamemode for freedesktop screensaver inhibit
 # - xdg-utils seems to be a dependency of wayland
 # - bluez for bluetooth
-# - cabextract fir winetricks vs redist installation
+# - cabextract for winetricks vs redist installation
 
 RUN apt-get update
 RUN apt-get install -y wget curl sudo winbind libgl1 libvulkan1 procps gosu gamemode xdg-utils bluez cabextract
