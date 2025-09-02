@@ -53,6 +53,16 @@ echo "Killing uneccesary applications"
 # container to exit.  See https://github.com/netbrain/zwift/issues/210
 pkill ZwiftLauncher || true
 pkill ZwiftWindowsCra
-pkill -f MicrosoftEdgeUpdate
 
 [ -z "$ZWIFT_NO_GAMEMODE" ] && /usr/games/gamemoderun wineserver -w || wineserver -w
+
+echo "Waiting for zwift to stop..."
+while pgrep -f ZwiftApp.exe &> /dev/null
+do
+    sleep 5
+done
+echo "Zwift exited"
+if pgrep -f MicrosoftEdgeUpdate &> /dev/null; then
+    echo "Killing Microsoft Edge Update"
+    pkill -f MicrosoftEdgeUpdate
+fi
