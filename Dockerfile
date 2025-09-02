@@ -22,8 +22,8 @@ ARG DEBIAN_VERSION
 # make sure to add "=" to the start, comment out for latest
 #    WINE_VERSION="=9.9~bookworm-1"
 ARG WINE_BRANCH="devel"
-ARG WINE_VERSION="=9.9~${DEBIAN_VERSION}-1"
-ARG WINETRICKS_VERSION=20240105
+ARG WINE_VERSION="=10.14~${DEBIAN_VERSION}-1"
+ARG WINETRICKS_VERSION=20250102
 
 RUN dpkg --add-architecture i386
 
