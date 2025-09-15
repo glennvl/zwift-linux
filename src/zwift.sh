@@ -224,6 +224,7 @@ container_env_vars+=(
     ZWIFT_GID="${container_gid}"
     PULSE_SERVER="/run/user/${container_uid}/pulse/native"
     CONTAINER_TOOL="${CONTAINER_TOOL}"
+    DBUS_SYSTEM_BUS_ADDRESS="unix:path=/var/run/dbus/system_bus_socket"
 )
 
 # Define base container parameters
@@ -232,9 +233,13 @@ container_args+=(
     --network "${NETWORKING}"
     --name "zwift-${USER}"
     --hostname "${HOSTNAME}"
+    --device="/dev/rfkill"
+    --cap-add="NET_ADMIN"
+    --cap-add="SYS_ADMIN"
     --env-file "${container_env_file}"
     -v "zwift-${USER}:/home/user/.wine/drive_c/users/user/Documents/Zwift"
     -v "/run/user/${local_uid}/pulse:/run/user/${container_uid}/pulse"
+    -v "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
 )
 
 ##############################################
