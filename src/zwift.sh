@@ -585,6 +585,15 @@ fi
 container_env_vars+=(PULSE_SERVER="/run/user/${container_uid}/pulse/native")
 container_args+=(-v "/run/user/${local_uid}/pulse:/run/user/${container_uid}/pulse")
 
+# Configure bluetooth
+container_env_vars+=(DBUS_SYSTEM_BUS_ADDRESS="unix:path=/var/run/dbus/system_bus_socket")
+container_args+=(
+    --cap-add="NET_ADMIN"
+    --cap-add="SYS_ADMIN"
+    --device="/dev/rfkill:/dev/rfkill"
+    -v "/var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket"
+)
+
 # Check for proprietary nvidia driver and set correct device to use (respects existing VGA_DEVICE_FLAG)
 if is_array "VGA_DEVICE_FLAG"; then
     container_args+=("${VGA_DEVICE_FLAG[@]}")
