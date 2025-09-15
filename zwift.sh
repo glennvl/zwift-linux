@@ -190,14 +190,19 @@ GENERAL_FLAGS=(
     --name zwift-$USER
     --security-opt label=disable
     --hostname $HOSTNAME
+    --device=/dev/rfkill
+    --cap-add=NET_ADMIN
+    --cap-add=SYS_ADMIN
 
     -e DISPLAY=$DISPLAY
     -e ZWIFT_UID=$CONTAINER_UID
     -e ZWIFT_GID=$CONTAINER_GID
     -e PULSE_SERVER=/run/user/$CONTAINER_UID/pulse/native
+    -e DBUS_SYSTEM_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
     -v zwift-$USER:/home/user/.wine/drive_c/users/user/Documents/Zwift
     -v /run/user/$LOCAL_UID/pulse:/run/user/$CONTAINER_UID/pulse
+    -v /var/run/dbus/system_bus_socket:/var/run/dbus/system_bus_socket
 )
 
 ###################################
