@@ -116,8 +116,9 @@ install_zwift() {
     # dotnet20: to prevent error dialog with CloseLauncher.exe
     # dotnet48: required by Zwift
     # d3dcompiler_47: required for Vulkan shaders
+    # vcrun2015: required by Zwift
     msgbox info "Installing prerequisites using winetricks"
-    winetricks -q dotnet20 dotnet48 d3dcompiler_47 || return 1
+    winetricks -q dotnet20 dotnet48 d3dcompiler_47 vcrun2015 || return 1
 
     # download and install webview 2
     msgbox info "Downloading and installing webview2"
