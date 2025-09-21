@@ -23,6 +23,11 @@ if [ ! -z $ZWIFT_OVERRIDE_RESOLUTION ]; then
     fi
 fi
 
+# Restore zwift graphics profiles if the directory is mounted and empty
+if mount | grep -q "$ZWIFT_HOME/data/configs" && [ -z "$(ls -A "$ZWIFT_HOME/data/configs")" ]; then
+    cp /home/user/zwift-profiles/* "$ZWIFT_HOME/data/configs"
+fi
+
 cd "$ZWIFT_HOME"
 
 echo "starting zwift..."
