@@ -30,6 +30,9 @@ ARG WINE_BRANCH="devel"
 ARG WINE_VERSION="=10.18~${DEBIAN_VERSION}-1"
 ARG WINETRICKS_VERSION=20250102
 
+# https://docs.docker.com/build/building/best-practices/#using-pipes
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
 # Install prerequisites
 # - bluez for bluetooth
 # - ca-certificates for wget and curl
@@ -41,11 +44,10 @@ ARG WINETRICKS_VERSION=20250102
 # - libvulkan1 for vulkan loader library
 # - procps for pgrep
 # - sudo for normal user installation
-# - wget for downloading winehq key
+# - wget for downloading winehq key and winetricks
 # - winbind for ntml_auth required by zwift/wine
 # - xdg-utils seems to be a dependency of wayland
-RUN dpkg --add-architecture i386 \
- && apt-get update \
+RUN apt-get update \
  && apt-get install --no-install-recommends -y \
         bluez \
         ca-certificates \
@@ -53,6 +55,7 @@ RUN dpkg --add-architecture i386 \
         curl \
         gamemode \
         gosu \
+        gpg \
         libegl1 \
         libgl1 \
         libvulkan1 \
@@ -63,15 +66,14 @@ RUN dpkg --add-architecture i386 \
         xdg-utils \
  && rm -rf /var/lib/apt/lists/*
 
-# Install wine and winetricks (including recommends, which appear to be required)
+# Install wine and winetricks (including recommends, see https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu)
 # hadolint ignore=DL3015
-RUN wget -qO /etc/apt/trusted.gpg.d/winehq.asc https://dl.winehq.org/wine-builds/winehq.key \
- && echo "deb https://dl.winehq.org/wine-builds/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list.d/winehq.list \
+RUN mkdir -p /etc/apt/keyrings \
+ && wget -qO - https://dl.winehq.org/wine-builds/winehq.key | gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key - \
+ && wget -qNP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/debian/dists/${DEBIAN_VERSION}/winehq-${DEBIAN_VERSION}.sources \
  && apt-get update \
- && apt-get install -y \
+ && apt-get install --install-recommends -y \
         wine-${WINE_BRANCH}${WINE_VERSION} \
-        wine-${WINE_BRANCH}-amd64${WINE_VERSION} \
-        wine-${WINE_BRANCH}-i386${WINE_VERSION} \
         winehq-${WINE_BRANCH}${WINE_VERSION} \
  && rm -rf /var/lib/apt/lists/* \
  && wget -qO /usr/local/bin/winetricks https://raw.githubusercontent.com/Winetricks/winetricks/${WINETRICKS_VERSION}/src/winetricks \
