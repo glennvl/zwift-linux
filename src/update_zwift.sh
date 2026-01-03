@@ -128,6 +128,10 @@ install_zwift() {
     msgbox info "Enabling Wayland support"
     wine reg.exe add HKCU\\Software\\Wine\\Drivers /v Graphics /d x11,wayland || return 1
 
+    # Use glx instead of egl
+    msgbox info "Disabling EGL (use GLX instead)"
+    wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /v UseEGL /d N || return 1
+
     # download and install zwift
     msgbox info "Downloading and installing Zwift"
     wget https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
