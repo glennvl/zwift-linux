@@ -28,7 +28,7 @@ FROM debian:${DEBIAN_VERSION}-slim AS wine-base
 ARG DEBIAN_VERSION
 ARG WINE_BRANCH="devel"
 ARG WINE_VERSION="=11.1~${DEBIAN_VERSION}-1"
-ARG WINETRICKS_VERSION=20250102
+ARG WINETRICKS_VERSION=20260125
 
 # https://docs.docker.com/build/building/best-practices/#using-pipes
 SHELL ["/bin/bash", "-o", "pipefail", "-c"]
