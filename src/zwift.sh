@@ -261,6 +261,7 @@ container_env_vars+=(
     ZWIFT_GID="${container_gid}"
     PULSE_SERVER="/run/user/${container_uid}/pulse/native"
     CONTAINER_TOOL="${CONTAINER_TOOL}"
+    LIMIT_FPS="60"
 )
 
 # Define base container parameters

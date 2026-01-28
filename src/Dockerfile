@@ -139,7 +139,7 @@ COPY --chmod=644 --from=build-libstrangle /usr/libstrangle/src/vulkan/libstrangl
 COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/src/strangle.sh /usr/local/bin/strangle
 COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/src/stranglevk.sh /usr/local/bin/stranglevk
 
-# create symlinks for libstrangle
+# Configure libstrangle shared libraries
 RUN ldconfig
 
 ENTRYPOINT ["entrypoint"]

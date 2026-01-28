@@ -40,11 +40,15 @@ wine start ZwiftLauncher.exe SilentLaunch
 launcher_pid_hex="$(winedbg --command "info proc" | grep -P "ZwiftLauncher.exe" | grep -oP "^\s\K.+?(?=\s)")"
 launcher_pid="$((16#${launcher_pid_hex}))"
 
+if [[ -n ${LIMIT_FPS} ]]; then
+    LAUNCH_PREFIX="strangle ${LIMIT_FPS}"
+fi
+
 if [[ -n ${ZWIFT_USERNAME} ]] && [[ -n ${ZWIFT_PASSWORD} ]]; then
     echo "authenticating with zwift..."
-    wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe --token="$(zwift-auth)"
+    "${LAUNCH_PREFIX}" wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe --token="$(zwift-auth)"
 else
-    wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe
+    "${LAUNCH_PREFIX}" wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe
 fi
 
 sleep 3
