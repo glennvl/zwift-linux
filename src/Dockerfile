@@ -18,6 +18,32 @@ WORKDIR /usr/src
 RUN git clone https://github.com/quietvoid/runfromprocess-rs . \
  && cargo build --target x86_64-pc-windows-gnu --release
 
+FROM debian:${DEBIAN_VERSION}-slim AS build-libstrangle
+
+# Install prerequisites
+# - ca-certificates and git to fetch libstrangle source code
+# - build-essential for gcc compiler and make
+# - g++-multilib, gcc-multilib, libx11-dev, mesa-common-dev required by libstrangle
+RUN apt-get update \
+ && apt-get install --no-install-recommends -y \
+        build-essential \
+        ca-certificates \
+        g++-multilib \
+        gcc-multilib \
+        git \
+        libx11-dev \
+        mesa-common-dev \
+ && rm -rf /var/lib/apt/lists/*
+
+# Build libstrangle
+# Apply patch to specific commit to fix compilation errors
+WORKDIR /usr/libstrangle
+COPY libstrangle.patch /usr/libstrangle.patch
+RUN git clone https://gitlab.com/torkel104/libstrangle.git . \
+ && git checkout 0273e318e3b0cc759155db8729ad74266b74cb9b \
+ && git apply /usr/libstrangle.patch \
+ && make
+
 FROM debian:${DEBIAN_VERSION}-slim AS wine-base
 
 # As at May 2024 Wayland Native works wine 9.9 or later:
@@ -102,5 +128,18 @@ COPY --chmod=755 update_zwift.sh /bin/update_zwift.sh
 COPY --chmod=755 run_zwift.sh /bin/run_zwift.sh
 COPY --chmod=755 zwift-auth.sh /bin/zwift-auth
 COPY --chmod=755 --from=build-runfromprocess /usr/src/target/x86_64-pc-windows-gnu/release/runfromprocess-rs.exe /bin/runfromprocess-rs.exe
+COPY --chmod=644 --from=build-libstrangle /usr/libstrangle/build/libstrangle.conf /etc/ld.so.conf.d/libstrangle.conf
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/build/libstrangle32.so /usr/local/lib/libstrangle/lib32/libstrangle.so
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/build/libstrangle64.so /usr/local/lib/libstrangle/lib64/libstrangle.so
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/build/libstrangle32_nodlsym.so /usr/local/lib/libstrangle/lib32/libstrangle_nodlsym.so
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/build/libstrangle64_nodlsym.so /usr/local/lib/libstrangle/lib64/libstrangle_nodlsym.so
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/build/libstrangle_vk32.so /usr/local/lib/libstrangle/lib32/libstrangle_vk.so
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/build/libstrangle_vk64.so /usr/local/lib/libstrangle/lib64/libstrangle_vk.so
+COPY --chmod=644 --from=build-libstrangle /usr/libstrangle/src/vulkan/libstrangle_vk.json /usr/local/share/vulkan/implicit_layer.d/libstrangle_vk.json
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/src/strangle.sh /usr/local/bin/strangle
+COPY --chmod=755 --from=build-libstrangle /usr/libstrangle/src/stranglevk.sh /usr/local/bin/stranglevk
+
+# create symlinks for libstrangle
+RUN ldconfig
 
 ENTRYPOINT ["entrypoint"]
