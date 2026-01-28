@@ -76,6 +76,7 @@ These environment variables can be used to alter the execution of the zwift bash
 | [`ZWIFT_SCREENSHOTS_DIR`](#zwift_screenshots_dir)         |                            | Set the screenshots directory location              |
 | [`ZWIFT_OVERRIDE_GRAPHICS`](#zwift_override_graphics)     | `0`                        | If set to `1`, override the zwift graphics profiles |
 | [`ZWIFT_OVERRIDE_RESOLUTION`](#zwift_override_resolution) |                            | If set, change the game resolution                  |
+| [`ZWIFT_FPS_LIMIT`](#zwift_fps_limit)                     |                            | If set, limit the fps to the requested value        |
 | [`ZWIFT_FG`](#zwift_fg)                                   | `0`                        | If set to `1`, run the container in the foreground  |
 | [`ZWIFT_NO_GAMEMODE`](#zwift_no_gamemode)                 | `0`                        | If set to `1`, don't run game mode                  |
 | [`WINE_EXPERIMENTAL_WAYLAND`](#wine_experimental_wayland) | `0`                        | If set to `1`, use native Wayland                   |
@@ -566,6 +567,19 @@ Set this option to a value to change the Zwift game resolution. For details on h
 | Default value     |                                               |
 | Commandline usage | `ZWIFT_OVERRIDE_RESOLUTION="3840x2160" zwift` |
 | Config file usage | `ZWIFT_OVERRIDE_RESOLUTION="3840x2160"`       |
+
+---
+
+### `ZWIFT_FPS_LIMIT`
+
+If set, limit the Zwift game fps to the requested value.
+
+| Item              | Description                  |
+|:------------------|:-----------------------------|
+| Allowed values    | number                       |
+| Default value     |                              |
+| Commandline usage | `ZWIFT_FPS_LIMIT="60" zwift` |
+| Config file usage | `ZWIFT_FPS_LIMIT="60"`       |
 
 ---
 
