@@ -7,6 +7,7 @@ if [[ ${DEBUG} -eq 1 ]]; then set -x; fi
 readonly ZWIFT_USERNAME="${ZWIFT_USERNAME:-}"
 readonly ZWIFT_PASSWORD="${ZWIFT_PASSWORD:-}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
+readonly ZWIFT_FPS_LIMIT="${ZWIFT_FPS_LIMIT:-}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
@@ -34,22 +35,24 @@ fi
 
 cd "${ZWIFT_HOME}"
 
-echo "starting zwift..."
+echo "Starting zwift..."
 wine start ZwiftLauncher.exe SilentLaunch
 
 launcher_pid_hex="$(winedbg --command "info proc" | grep -P "ZwiftLauncher.exe" | grep -oP "^\s\K.+?(?=\s)")"
 launcher_pid="$((16#${launcher_pid_hex}))"
 
-if [[ -n ${LIMIT_FPS} ]]; then
-    LAUNCH_PREFIX="strangle ${LIMIT_FPS}"
-fi
+wine_cmd=(wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe)
 
 if [[ -n ${ZWIFT_USERNAME} ]] && [[ -n ${ZWIFT_PASSWORD} ]]; then
-    echo "authenticating with zwift..."
-    "${LAUNCH_PREFIX}" wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe --token="$(zwift-auth)"
-else
-    "${LAUNCH_PREFIX}" wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe
+    echo "Authenticating with zwift..."
+    wine_cmd+=(--token="$(zwift-auth)")
 fi
+
+if [[ -n ${ZWIFT_FPS_LIMIT} ]]; then
+    wine_cmd=(strangle "${ZWIFT_FPS_LIMIT}" "${wine_cmd[@]}")
+fi
+
+"${wine_cmd[@]}"
 
 sleep 3
 
