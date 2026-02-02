@@ -7,30 +7,15 @@
       "installDockerBuildx": true,
       "moby": false
     },
-    "ghcr.io/devcontainers/features/ruby": {},
     "ghcr.io/devcontainers/features/go": {},
-    "ghcr.io/devcontainers/features/node": {},
     "ghcr.io/devcontainers/features/nix": {
-      "packages": "nil,nixfmt",
       "extraNixConfig": "experimental-features = nix-command flakes"
-    },
-    "ghcr.io/devcontainers-extra/features/actionlint": {},
-    "ghcr.io/devcontainers-extra/features/shellcheck": {},
-    "ghcr.io/devcontainers-extra/features/shfmt": {},
-    "ghcr.io/devcontainers-extra/features/yamllint": {},
-    "ghcr.io/dhoeric/features/hadolint": {}
+    }
   },
   "overrideFeatureInstallOrder": [
     "ghcr.io/devcontainers/features/docker-in-docker",
-    "ghcr.io/devcontainers/features/ruby",
     "ghcr.io/devcontainers/features/go",
-    "ghcr.io/devcontainers/features/node",
-    "ghcr.io/devcontainers/features/nix",
-    "ghcr.io/devcontainers-extra/features/actionlint",
-    "ghcr.io/devcontainers-extra/features/shellcheck",
-    "ghcr.io/devcontainers-extra/features/shfmt",
-    "ghcr.io/devcontainers-extra/features/yamllint",
-    "ghcr.io/dhoeric/features/hadolint"
+    "ghcr.io/devcontainers/features/nix"
   ],
   "customizations": {
     "vscode": {
