@@ -46,5 +46,6 @@
     }
   },
   "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postAttachCommand": "sleep 5 && nix develop",
   "remoteUser": "vscode"
 }
