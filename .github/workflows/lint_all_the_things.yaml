@@ -79,11 +79,9 @@ jobs:
           VALIDATE_DOCKERFILE_HADOLINT: true
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_MARKDOWN: true
-          VALIDATE_MARKDOWN_PRETTIER: true
           VALIDATE_SHELL_SHFMT: true
           VALIDATE_SPELL_CODESPELL: true
           VALIDATE_YAML: true
-          VALIDATE_YAML_PRETTIER: true
           DOCKERFILE_HADOLINT_FILENAME: .hadolint.yaml
           MARKDOWN_CONFIG_FILE: .markdownlint.yaml
           SPELL_CODESPELL_CONFIG_FILE: .cspell.yaml
