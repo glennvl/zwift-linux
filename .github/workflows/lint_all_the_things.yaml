@@ -1,6 +1,6 @@
 ---
-name: Lint all the things  # yamllint disable-line rule:truthy
-on:
+name: Lint all the things
+on:  # yamllint disable-line rule:truthy
   pull_request:
     branches:
       - master
@@ -82,3 +82,7 @@ jobs:
           VALIDATE_SPELL_CODESPELL: true
           VALIDATE_YAML: true
           VALIDATE_YAML_PRETTIER: true
+          DOCKERFILE_HADOLINT_FILENAME: .hadolint.yaml
+          MARKDOWN_CONFIG_FILE: .markdownlint.yaml
+          SPELL_CODESPELL_CONFIG_FILE: .cspell.yaml
+          YAML_CONFIG_FILE: .yamllint.yaml
