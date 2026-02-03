@@ -1,0 +1,95 @@
+---
+name: Lint all the things # yamllint disable-line rule:truthy
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+jobs:
+  validate-dockerfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+      - name: Install docker buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Check Dockerfile for errors
+        uses: docker/build-push-action@v6
+        with:
+          call: check
+          file: src/Dockerfile
+  validate-squash-dockerfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+      - name: Install docker buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Check squash.Dockerfile for errors
+        uses: docker/build-push-action@v6
+        with:
+          call: check
+          file: src/squash.Dockerfile
+  validate-nix-flake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+      - name: Install nix language tools
+        run: nix profile add github:oxalica/nil
+      - name: Check nix flake for errors
+        run: nil diagnostics -- *.nix
+  check-nix-flake-formatted:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+      - name: Install nix language tools
+        run: nix profile add github:nixos/nixfmt
+      - name: Check if nix flake is formatted
+        run: nixfmt --check -- *.nix
+  build-nix-flake:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+      - name: Install nix
+        uses: cachix/install-nix-action@v31
+      - name: Build nix flake
+        run: |
+          cd tests/nix-flake
+          nix build --no-write-lock-file --dry-run
+  lint-all-the-things:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      issues: write
+      pull-requests: write
+      statuses: write
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Run super-linter
+        uses: super-linter/super-linter@v8.4.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_BASH: true
+          VALIDATE_BASH_EXEC: true
+          VALIDATE_DOCKERFILE_HADOLINT: true
+          VALIDATE_GITHUB_ACTIONS: true
+          VALIDATE_MARKDOWN: true
+          VALIDATE_MARKDOWN_PRETTIER: true
+          VALIDATE_SHELL_SHFMT: true
+          VALIDATE_SPELL_CODESPELL: true
+          VALIDATE_YAML: true
+          VALIDATE_YAML_PRETTIER: true
