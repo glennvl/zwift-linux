@@ -93,6 +93,7 @@ jobs:
           VALIDATE_SHELL_SHFMT: true
           VALIDATE_SPELL_CODESPELL: true
           VALIDATE_YAML: true
+          LINTER_RULES_PATH: .
           DOCKERFILE_HADOLINT_FILENAME: .hadolint.yaml
           MARKDOWN_CONFIG_FILE: .markdownlint.yaml
           SPELL_CODESPELL_CONFIG_FILE: .cspell.yaml
