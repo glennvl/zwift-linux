@@ -65,6 +65,16 @@ jobs:
         run: |
           cd tests/nix-flake
           nix build --no-write-lock-file --dry-run
+  spellcheck-markdown:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v6
+      - name: Spellcheck markdown files
+        uses: streetsidesoftware/cspell-action@v7
+        with:
+          config: ".cspell.yaml"
+          suggestions: true
   lint-all-the-things:
     runs-on: ubuntu-latest
     permissions:
@@ -91,10 +101,8 @@ jobs:
           VALIDATE_GITHUB_ACTIONS: true
           VALIDATE_MARKDOWN: true
           VALIDATE_SHELL_SHFMT: true
-          VALIDATE_SPELL_CODESPELL: true
           VALIDATE_YAML: true
           LINTER_RULES_PATH: .
           DOCKERFILE_HADOLINT_FILENAME: .hadolint.yaml
           MARKDOWN_CONFIG_FILE: .markdownlint.yaml
-          SPELL_CODESPELL_CONFIG_FILE: .cspell.yaml
           YAML_CONFIG_FILE: .yamllint.yaml
