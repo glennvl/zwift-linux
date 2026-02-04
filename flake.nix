@@ -80,7 +80,7 @@
               privilegedContainer != ""
             ) "export PRIVILEGED_CONTAINER=${privilegedContainer}"}
 
-            ${./src/zwift.sh}
+            ${./zwift.sh}
           '';
 
           nativeBuildInputs = [ pkgs.copyDesktopItems ];
@@ -88,7 +88,8 @@
           installPhase = ''
             runHook preInstall
             install -Dm755 ${nixosRun} -T $out/bin/${pname}
-            install -Dm644 $src/bin/zwift.svg -T $out/share/icons/hicolor/scalable/apps/zwift.svg
+            install -Dm644 $src/share/icons/hicolor/scalable/apps/zwift.svg \
+                    -T $out/share/icons/hicolor/scalable/apps/zwift.svg
             runHook postInstall
           '';
 
