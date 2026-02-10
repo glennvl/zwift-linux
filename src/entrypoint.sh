@@ -48,13 +48,13 @@ if [[ ${CONTAINER_TOOL} == "docker" ]]; then
 
     # Test that it exists and is a number, and only if different to existing.
     switch_user_id=0
-    if [[ ${ZWIFT_UID} -eq ${ZWIFT_UID} ]] && [[ ${user_uid} -ne ${ZWIFT_UID} ]]; then
+    if [[ ${ZWIFT_UID} =~ ^[0-9]+$ ]] && [[ ${user_uid} -ne ${ZWIFT_UID} ]]; then
         user_uid="${ZWIFT_UID}"
         switch_user_id=1
     else
         echo "ZWIFT_UID is not set or not a number: '${ZWIFT_UID}'"
     fi
-    if [[ ${ZWIFT_GID} -eq ${ZWIFT_GID} ]] && [[ ${user_gid} -ne ${ZWIFT_GID} ]]; then
+    if [[ ${ZWIFT_GID} =~ ^[0-9]+$ ]] && [[ ${user_gid} -ne ${ZWIFT_GID} ]]; then
         user_gid="${ZWIFT_GID}"
         switch_user_id=1
     else
