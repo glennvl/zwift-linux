@@ -163,6 +163,8 @@ if [[ ${DONT_CHECK} -ne 1 ]]; then
     else
         msgbox warning "Continuing with old zwift.sh"
     fi
+else
+    msgbox warning "Not checking for new zwift.sh"
 fi
 
 # Check for updated container image
@@ -173,6 +175,8 @@ if [[ ${DONT_PULL} -ne 1 ]]; then
     else
         msgbox error "Failed to update container image"
     fi
+else
+    msgbox warning "Not checking for new container image"
 fi
 
 # Clean previous container images (if any)
