@@ -26,17 +26,77 @@ else
     readonly RESET_STYLE=""
 fi
 
+TERMINAL_WIDTH="$(tput cols 2> /dev/null || echo 80)"
+readonly TERMINAL_WIDTH
+
 msgbox() {
-    local type="${1:?}" # Type: info, ok, warning, error
-    local msg="${2:?}"  # Message: the message to display
+    local type="${1:?}" # Type: info, ok, warning, error, viewport
+    local msg="${2:-}"  # Message: the message to display
 
     case ${type} in
         info) echo -e "${COLOR_BLUE}[*] ${msg}${RESET_STYLE}" ;;
         ok) echo -e "${COLOR_GREEN}[✓] ${msg}${RESET_STYLE}" ;;
         warning) echo -e "${COLOR_YELLOW}[!] ${msg}${RESET_STYLE}" ;;
         error) echo -e "${COLOR_RED}[✗] ${msg}${RESET_STYLE}" >&2 ;;
+        viewport) echo -e "${COLOR_WHITE}[•] ${msg}${RESET_STYLE}" ;;
         *) echo -e "${COLOR_WHITE}[*] ${msg}${RESET_STYLE}" ;;
     esac
+}
+
+viewport() {
+    local max_rows="${1:-20}"
+    local temp_file
+    temp_file="$(mktemp -q /tmp/viewport-XXXXXXXXXX)" || return 1
+    cat - > "${temp_file}" &
+    local cat_pid="${!}"
+
+    preprocess() {
+        local start_time processed_lines=0
+        start_time="$(date +%s.%N)"
+
+        preprocess_lines() {
+            local total_lines to_read=0 line now elapsed_time
+            total_lines="$(wc -l < "${temp_file}" || echo 0)"
+            [[ ${total_lines} -gt ${processed_lines} ]] && to_read="$((total_lines - processed_lines))"
+            tail -n "${to_read}" "${temp_file}" 2> /dev/null | while IFS= read -r line; do
+                now="$(date +%s.%N)"
+                elapsed_time="$(awk -v s="${start_time}" -v n="${now}" 'BEGIN{printf "%.1f", n - s}')"
+                printf '[%ss] %s\n' "${elapsed_time}" "${line//\\/\\\\}"
+            done
+            processed_lines="${total_lines}"
+        }
+
+        while ps -p "${cat_pid}" > /dev/null 2>&1; do
+            preprocess_lines
+            sleep 0.05
+        done
+        preprocess_lines
+    }
+
+    viewportify() {
+        local last_printed=0 buffer="" line total to_show buffer_line
+        local max_width="$((TERMINAL_WIDTH - 4))"
+        while IFS= read -r line; do
+            for i in $(seq 0 "${max_width}" "${#line}"); do
+                buffer+="${line:i:max_width}"$'\n'
+            done
+            total="$(printf '%s' "${buffer}" | wc -l || echo 0)"
+            to_show="${max_rows}"
+            [[ ${total} -lt ${max_rows} ]] && to_show="${total}"
+            [[ ${last_printed} -gt 0 ]] && printf '\033[%dA' "${last_printed}"
+            printf '%s' "${buffer}" | tail -n "${to_show}" | while IFS= read -r buffer_line; do
+                buffer_line="$(msgbox viewport "${buffer_line}")"
+                printf '\033[2K%s\r\n' "${buffer_line%?}"
+            done
+            last_printed="${to_show:-0}"
+        done
+    }
+
+    preprocess | viewportify &
+    local pipeline_pid="${!}"
+    wait "${cat_pid}" 2> /dev/null || true
+    wait "${pipeline_pid}" 2> /dev/null || true
+    rm -f "${temp_file}"
 }
 
 command_exists() {
@@ -154,7 +214,7 @@ cleanup() {
 trap cleanup EXIT
 
 msgbox info "Building image ${IMAGE}"
-if ${CONTAINER_TOOL} build --force-rm -t "${BUILD_NAME}" "${SCRIPT_DIR}"; then
+if ${CONTAINER_TOOL} build --force-rm -t "${BUILD_NAME}" "${SCRIPT_DIR}" |& viewport; then
     msgbox ok "Successfully built image ${IMAGE}"
 else
     msgbox error "Failed to build image"
@@ -162,7 +222,7 @@ else
 fi
 
 msgbox info "Launching temporary container to install Zwift"
-if ${CONTAINER_TOOL} run "${container_args[@]}" "${IMAGE}:latest" "${@}"; then
+if ${CONTAINER_TOOL} run "${container_args[@]}" "${IMAGE}:latest" "${@}" |& viewport; then
     msgbox ok "Successfully installed Zwift in container"
 else
     msgbox error "Failed to start container"
@@ -170,7 +230,7 @@ else
 fi
 
 msgbox info "Updating image with changes from temporary container"
-if ${CONTAINER_TOOL} commit zwift "${BUILD_NAME}:latest"; then
+if ${CONTAINER_TOOL} commit zwift "${BUILD_NAME}:latest" |& viewport; then
     msgbox ok "Tagged Zwift container as ${IMAGE}:latest"
 else
     msgbox error "Failed to commit container changes to image"
