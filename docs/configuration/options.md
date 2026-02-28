@@ -31,6 +31,7 @@ These environment variables can be used to alter the execution of the zwift bash
 | `ZWIFT_SCREENSHOTS_DIR`     |                            | Set the screenshots directory location, recommended to set `ZWIFT_SCREENSHOTS_DIR="$(xdg-user-dir PICTURES)/Zwift"`                    |
 | `ZWIFT_OVERRIDE_GRAPHICS`   | `0`                        | If set to `1`, override the default zwift graphics profiles                                                                            |
 | `ZWIFT_OVERRIDE_RESOLUTION` |                            | If set, change game resolution (2560x1440, 3840x2160, ...)                                                                             |
+| `ZWIFT_FPS_LIMIT`           |                            | If set, limit the fps to the requested value, eg. `ZWIFT_FPS_LIMIT=60`                                                                 |
 | `ZWIFT_FG`                  | `0`                        | If set to `1`, run the process in fg instead of bg (`-d`)                                                                              |
 | `ZWIFT_NO_GAMEMODE`         | `0`                        | If set to `1`, don't run game mode                                                                                                     |
 | `WINE_EXPERIMENTAL_WAYLAND` | `0`                        | If set to `1`, try to use experimental wayland support in wine 9                                                                       |

@@ -121,6 +121,7 @@ readonly ZWIFT_LOG_DIR="${ZWIFT_LOG_DIR:-}"
 readonly ZWIFT_SCREENSHOTS_DIR="${ZWIFT_SCREENSHOTS_DIR:-}"
 readonly ZWIFT_OVERRIDE_GRAPHICS="${ZWIFT_OVERRIDE_GRAPHICS:-0}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
+readonly ZWIFT_FPS_LIMIT="${ZWIFT_FPS_LIMIT:-}"
 readonly ZWIFT_FG="${ZWIFT_FG:-0}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
 readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
@@ -342,6 +343,11 @@ fi
 # If custom resolution is requested, pass environment variable to container
 if [[ -n ${ZWIFT_OVERRIDE_RESOLUTION} ]]; then
     container_env_vars+=(ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION}")
+fi
+
+# If frame rate limiting is requested, pass environment variables to container
+if [[ -n ${ZWIFT_FPS_LIMIT} ]]; then
+    container_env_vars+=(ZWIFT_FPS_LIMIT="${ZWIFT_FPS_LIMIT}")
 fi
 
 # Pass environment variable to container if gamemode should be disabled
