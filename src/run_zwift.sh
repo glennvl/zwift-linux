@@ -60,7 +60,7 @@ echo "Killing unnecessary applications"
 # container to exit.  See https://github.com/netbrain/zwift/issues/210
 pkill ZwiftLauncher || true
 pkill ZwiftWindowsCra
-pkill -f MicrosoftEdgeUpdate
+pkill -f MicrosoftEdgeUpdate || true
 
 if [[ ${ZWIFT_NO_GAMEMODE} -ne 1 ]]; then
     /usr/games/gamemoderun wineserver -w
