@@ -29,7 +29,7 @@ FROM debian:${DEBIAN_VERSION}-slim AS wine-base
 # - 20240105 : first version used in this Dockerfile
 ARG DEBIAN_VERSION
 ARG WINE_BRANCH="devel"
-ARG WINE_VERSION="=9.9~${DEBIAN_VERSION}-1"
+ARG WINE_VERSION="=11.18~${DEBIAN_VERSION}-1"
 ARG WINETRICKS_VERSION=f3890f670867b5ffbc3938726db45c0f7d16c8ba
 ARG WINETRICKS_CHECKSUM=672a1ff4442e8691a3ffc0e6860137e201a1d1227e9b3044245f1731e9e9837e
 
@@ -40,8 +40,10 @@ ARG WINETRICKS_CHECKSUM=672a1ff4442e8691a3ffc0e6860137e201a1d1227e9b3044245f1731
 # - curl used in zwift authentication script
 # - gamemode for freedesktop screensaver inhibit
 # - gosu for invoking scripts in entrypoint
+# - gpg for dearmoring winehq key
 # - libglvnd0 for graphics libraries
 # - libvulkan1 for vulkan loader library
+# - mesa-utils for testing graphics: glxgears, eglgears_wayland, eglgears_x11
 # - procps for pgrep
 # - rsync to synchronize zwift volume with zwift appdata
 # - wget for downloading winehq key
@@ -56,10 +58,12 @@ RUN dpkg --add-architecture i386 \
         curl \
         gamemode \
         gosu \
+        gpg \
         libgamemode0.i386 \
         libgamemodeauto0.i386 \
         libglvnd0 \
         libvulkan1 \
+        mesa-utils \
         procps \
         rsync \
         wget \
@@ -67,16 +71,15 @@ RUN dpkg --add-architecture i386 \
         xdg-utils \
  && rm -rf /var/lib/apt/lists/*
 
-# Install wine (including recommends, which appear to be required)
+# Install wine (including recommends, see https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu)
 # hadolint ignore=DL3015
-RUN wget -qO /etc/apt/trusted.gpg.d/winehq.asc https://dl.winehq.org/wine-builds/winehq.key \
- && echo "deb https://dl.winehq.org/wine-builds/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list.d/winehq.list \
+RUN mkdir -p /etc/apt/keyrings \
+ && wget -qO /tmp/winehq.key https://dl.winehq.org/wine-builds/winehq.key \
+ && gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key /tmp/winehq.key \
+ && rm -f /tmp/winehq.key \
+ && wget -qNP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/debian/dists/${DEBIAN_VERSION}/winehq-${DEBIAN_VERSION}.sources \
  && DEBIAN_FRONTEND="noninteractive" apt-get update \
- && DEBIAN_FRONTEND="noninteractive" apt-get install -y \
-        wine-${WINE_BRANCH}${WINE_VERSION} \
-        wine-${WINE_BRANCH}-amd64${WINE_VERSION} \
-        wine-${WINE_BRANCH}-i386${WINE_VERSION} \
-        winehq-${WINE_BRANCH}${WINE_VERSION} \
+ && DEBIAN_FRONTEND="noninteractive" apt-get install --install-recommends -y winehq-${WINE_BRANCH}${WINE_VERSION} \
  && rm -rf /var/lib/apt/lists/*
 
 # Download winetricks
