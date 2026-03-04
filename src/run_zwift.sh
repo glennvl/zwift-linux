@@ -25,6 +25,7 @@ readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly ZWIFT_USERNAME="${ZWIFT_USERNAME:-}"
 readonly ZWIFT_PASSWORD="${ZWIFT_PASSWORD:-}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
+readonly ZWIFT_FPS_LIMIT="${ZWIFT_FPS_LIMIT:-}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
@@ -114,6 +115,11 @@ if [[ -n ${ZWIFT_USERNAME} ]] && [[ -n ${ZWIFT_PASSWORD} ]]; then
     else
         msgbox warning "Authentication failed, manual login will be required"
     fi
+fi
+
+if [[ -n ${ZWIFT_FPS_LIMIT} ]]; then
+    msgbox info "Limiting Zwift fps to ${ZWIFT_FPS_LIMIT}"
+    wine_cmd=(strangle "${ZWIFT_FPS_LIMIT}" "${wine_cmd[@]}")
 fi
 
 msgbox info "Starting Zwift using wine"
