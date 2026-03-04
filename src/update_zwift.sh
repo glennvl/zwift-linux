@@ -116,8 +116,9 @@ install_zwift() {
     # dotnet20: to prevent error dialog with CloseLauncher.exe
     # dotnet48: required by Zwift
     # d3dcompiler_47: required for Vulkan shaders
+    # vcrun2015: required by Zwift
     msgbox info "Installing prerequisites using winetricks"
-    winetricks -q dotnet20 dotnet48 d3dcompiler_47 || return 1
+    winetricks -q dotnet20 dotnet48 d3dcompiler_47 vcrun2015 || return 1
 
     # download and install webview 2
     msgbox info "Downloading and installing webview2"
@@ -127,6 +128,10 @@ install_zwift() {
     # enable Wayland support, requires DISPLAY to be blank to use Wayland
     msgbox info "Enabling Wayland support"
     wine reg.exe add HKCU\\Software\\Wine\\Drivers /v Graphics /d x11,wayland || return 1
+
+    # Use glx instead of egl
+    msgbox info "Disabling EGL (use GLX instead)"
+    wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /v UseEGL /d N || return 1
 
     # download and install zwift
     msgbox info "Downloading and installing Zwift"
