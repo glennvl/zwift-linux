@@ -23,6 +23,7 @@ fi
 
 readonly VERBOSITY="${VERBOSITY:-1}"
 readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
+readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
 readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
@@ -135,7 +136,12 @@ install_zwift() {
     wine webview2-setup.exe /silent /install || return 1
 
     msgbox info "Enabling Wayland support"
-    wine reg.exe add HKCU\\Software\\Wine\\Drivers /v Graphics /d x11,wayland || return 1
+    wine reg.exe add 'HKCU\Software\Wine\Drivers' /v Graphics /d x11,wayland || return 1
+
+    if [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
+        msgbox info "Disabling EGL (using GLX instead)"
+        wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /v UseEGL /d N || return 1
+    fi
 
     msgbox info "Downloading and installing Zwift"
     wget https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
