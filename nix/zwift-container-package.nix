@@ -20,6 +20,7 @@
   zwiftFg ? "",
   zwiftNoGameMode ? "",
   wineExperimentalWayland ? "",
+  wineDisableEgl ? "",
   networking ? "",
   zwiftUid ? "",
   zwiftGid ? "",
@@ -64,6 +65,7 @@ let
     ${pkgs.lib.optionalString (
       wineExperimentalWayland != ""
     ) "export WINE_EXPERIMENTAL_WAYLAND=${wineExperimentalWayland}"}
+    ${pkgs.lib.optionalString (wineDisableEgl != "") "export WINE_DISABLE_EGL=${wineDisableEgl}"}
     ${pkgs.lib.optionalString (networking != "") "export NETWORKING='${networking}'"}
     ${pkgs.lib.optionalString (zwiftUid != "") "export ZWIFT_UID='${zwiftUid}'"}
     ${pkgs.lib.optionalString (zwiftGid != "") "export ZWIFT_GID='${zwiftGid}'"}
