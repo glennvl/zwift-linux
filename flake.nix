@@ -29,6 +29,7 @@
           zwiftFg,
           zwiftNoGameMode,
           wineExperimentalWayland,
+          wineDisableEgl,
           networking,
           zwiftUid,
           zwiftGid,
@@ -76,6 +77,7 @@
             ${pkgs.lib.optionalString (
               wineExperimentalWayland != ""
             ) "export WINE_EXPERIMENTAL_WAYLAND=${wineExperimentalWayland}"}
+            ${pkgs.lib.optionalString (wineDisableEgl != "") "export WINE_DISABLE_EGL=${wineDisableEgl}"}
             ${pkgs.lib.optionalString (networking != "") "export NETWORKING='${networking}'"}
             ${pkgs.lib.optionalString (zwiftUid != "") "export ZWIFT_UID='${zwiftUid}'"}
             ${pkgs.lib.optionalString (zwiftGid != "") "export ZWIFT_GID='${zwiftGid}'"}
@@ -197,6 +199,10 @@
                 type = bool;
                 default = false;
               };
+              wineDisableEgl = mkOption {
+                type = bool;
+                default = false;
+              };
               networking = mkOption {
                 type = str;
                 default = "";
@@ -265,6 +271,7 @@
                     zwiftFg = if zwiftFg then "1" else "";
                     zwiftNoGameMode = if zwiftNoGameMode then "1" else "";
                     wineExperimentalWayland = if wineExperimentalWayland then "1" else "";
+                    wineDisableEgl = if wineDisableEgl then "1" else "";
                     debug = if debug then "1" else "";
                     privilegedContainer = if privilegedContainer then "1" else "";
                   })
