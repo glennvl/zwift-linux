@@ -39,6 +39,7 @@ ARG WINETRICKS_VERSION=20260125
 # - gpg for dearmoring winehq key
 # - libegl1 and libgl1 for GL library
 # - libvulkan1 for vulkan loader library
+# - mesa-utils for testing graphics: glxgears, eglgears_wayland, eglgears_x11
 # - procps for pgrep
 # - sudo for normal user installation
 # - wget for downloading winehq key and winetricks
@@ -55,6 +56,7 @@ RUN dpkg --add-architecture i386 \
         libegl1 \
         libgl1 \
         libvulkan1 \
+        mesa-utils \
         procps \
         sudo \
         wget \
