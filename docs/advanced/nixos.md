@@ -40,6 +40,8 @@ environment variables in camelCase:
     image = "docker.io/netbrain/zwift";
     # The zwift game version to run
     version = "1.67.0";
+    # Use the unstable branch
+    enableUnstable = true;
     # Container tool to run zwift (e.g., "podman" or "docker")
     containerTool = "podman";
     # If true, do not pull the image (use locally cached image)

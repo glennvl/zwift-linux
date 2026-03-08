@@ -39,6 +39,12 @@ in
       description = "Container image tag/version.";
     };
 
+    enableUnstable = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Use the unstable branch.";
+    };
+
     dontCheck = mkOption {
       type = types.bool;
       default = false;
@@ -221,6 +227,7 @@ in
           vgaDeviceFlag
           ;
         tag = cfg.version;
+        enableUnstable = if cfg.enableUnstable then "1" else "";
         dontCheck = if cfg.dontCheck then "1" else "";
         dontPull = if cfg.dontPull then "1" else "";
         dontClean = if cfg.dontClean then "1" else "";
