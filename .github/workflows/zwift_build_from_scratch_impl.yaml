@@ -10,8 +10,6 @@ name: Zwift build from scratch
         required: true
         type: string
     secrets:
-      github_token:
-        required: true
       dockerhub_username:
         required: true
       dockerhub_token:
@@ -33,7 +31,6 @@ jobs:
       uses: actions/checkout@v6
       with:
         ref: ${{ inputs.git_branch }}
-        token: ${{ secrets.github_token }}
     - name: Build zwift
       run: |
         export DISPLAY=":99"
