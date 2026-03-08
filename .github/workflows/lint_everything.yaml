@@ -5,6 +5,7 @@ name: Lint everything
   push:
     branches:
     - master
+    - unstable
 jobs:
   bash-lint:
     name: Bash - Lint with shellcheck
