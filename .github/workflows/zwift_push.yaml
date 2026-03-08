@@ -4,6 +4,7 @@ name: Zwift script files updater
   push:
     branches:
     - master
+    - unstable
 concurrency:
   group: zwift-container-image
 jobs:
@@ -22,8 +23,13 @@ jobs:
       uses: actions/checkout@v6
     - name: Get latest zwift container and diff script files
       run: |
-        docker pull netbrain/zwift:latest
-        docker create --name zwift netbrain/zwift:latest
+        tag="latest"
+        if [[ ${{ github.ref_name }} != "master" ]]; then
+            tag="${{ github.ref_name }}"
+        fi
+
+        docker pull "netbrain/zwift:${tag}"
+        docker create --name zwift "netbrain/zwift:${tag}"
 
         declare -A files_map
         files_map["/bin/entrypoint"]="src/entrypoint.sh"
@@ -53,7 +59,7 @@ jobs:
                 --change="LABEL org.opencontainers.image.created=${build_date}" \
                 -m "Updated script files from git (${GITHUB_SHA})" \
                 zwift \
-                netbrain/zwift:latest
-            docker push "netbrain/zwift:latest"
+                "netbrain/zwift:${tag}"
+            docker push "netbrain/zwift:${tag}"
         fi
         docker rm zwift
