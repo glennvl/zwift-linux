@@ -1,5 +1,5 @@
 ---
-name: Zwift updater
+name: Update Zwift
 'on':
   workflow_dispatch:
   schedule:
@@ -7,59 +7,18 @@ name: Zwift updater
 concurrency:
   group: zwift-container-image
 jobs:
-  zwift_updater:
+  update_zwift:
     if: github.repository == 'netbrain/zwift'
-    runs-on: ubuntu-22.04
-    timeout-minutes: 360
-    steps:
-    - name: Login to Docker Hub
-      uses: docker/login-action@v4
-      with:
-        username: ${{ secrets.DOCKERHUB_USERNAME }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - name: Install dependencies
-      run: sudo apt-get install -y x11-xserver-utils x11-apps
-    - uses: netbrain/free-disk-space-action@v0.0.1
-    - name: Check for zwift update
-      run: |
-        export DISPLAY=":99"
-
-        version="$(curl -s http://cdn.zwift.com/gameassets/Zwift_Updates_Root/Zwift_ver_cur.xml \
-            | grep -oP 'sversion="\K.*?(?=")' | cut -f 1 -d ' ')"
-        image_version="$(curl -s https://hub.docker.com/v2/repositories/netbrain/zwift/tags/ | jq -r '.results[1].name')"
-        build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-
-        echo "Latest Zwift version is: ${version}"
-        echo "Latest image version is: ${image_version}"
-
-        if [[ ${image_version} == "${version}" ]]; then
-            echo "Nothing to do, image already has latest Zwift version"
-            exit 0
-        fi
-
-        echo "Starting update..."
-
-        Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
-        sleep 3
-
-        xhost +
-        docker run \
-            --name zwift \
-            -e DISPLAY="${DISPLAY}" \
-            -e CONTAINER_TOOL="docker" \
-            --device="/dev/dri:/dev/dri" \
-            -v /tmp/.X11-unix:/tmp/.X11-unix \
-            netbrain/zwift:latest \
-            --update
-
-        docker commit \
-            --change="LABEL org.opencontainers.image.created=${build_date}" \
-            --change="LABEL org.opencontainers.image.version=${version}" \
-            --change='CMD [""]' \
-            -m "updated to version ${version}" \
-            zwift \
-            "netbrain/zwift:${version}"
-
-        docker tag "netbrain/zwift:${version}" netbrain/zwift:latest
-        docker push "netbrain/zwift:${version}"
-        docker push netbrain/zwift:latest
+    strategy:
+      fail-fast: false
+      matrix:
+        git_branch:
+        - master
+        - unstable
+    uses: ./.github/workflows/zwift_updater_impl.yaml
+    with:
+      git_branch: ${{ matrix.git_branch }}
+      dockerhub_image: netbrain/zwift
+    secrets:
+      dockerhub_username: ${{ secrets.DOCKERHUB_USERNAME }}
+      dockerhub_token: ${{ secrets.DOCKERHUB_TOKEN }}
