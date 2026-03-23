@@ -604,6 +604,9 @@ xhost_access_required=0
 if [[ ${window_manager} == "XWayland" ]] || [[ ${window_manager} == "XOrg" ]]; then
     msgbox info "Using X11 window manager (${window_manager})"
 
+    # Share host IPC namespace so Mesa can attach to X11 shared memory (needed for DRI2/DRI3)
+    container_args+=(--ipc=host)
+
     if [[ -n ${DISPLAY} ]]; then
         container_env_vars+=(DISPLAY="${DISPLAY}")
     else
