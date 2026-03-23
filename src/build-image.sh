@@ -142,6 +142,7 @@ if [[ -z ${DISPLAY} ]] || [[ ! -S /tmp/.X11-unix/X${x11_display} ]]; then
     exit 1
 fi
 container_args+=(
+    --ipc=host
     -e DISPLAY="${DISPLAY}"
     -v /tmp/.X11-unix:/tmp/.X11-unix
 )
