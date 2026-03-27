@@ -153,10 +153,18 @@ readonly XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
 
 # Initialize user configuration environment variables
 readonly VERBOSITY="${VERBOSITY:-1}"
+readonly ENABLE_UNSTABLE="${ENABLE_UNSTABLE:-0}"
+if [[ ${ENABLE_UNSTABLE} -eq 1 ]]; then
+    msgbox warning "ENABLE_UNSTABLE: Using unstable branch"
+    readonly DEFAULT_IMAGE_VERSION="unstable"
+    readonly DEFAULT_GIT_BRANCH="unstable"
+else
+    readonly DEFAULT_IMAGE_VERSION="latest"
+    readonly DEFAULT_GIT_BRANCH="master"
+fi
 readonly IMAGE="${IMAGE:-docker.io/netbrain/zwift}"
-readonly VERSION="${VERSION:-latest}"
-readonly LATEST_SCRIPT_VERSION="master"
-readonly SCRIPT_VERSION="${SCRIPT_VERSION:-${LATEST_SCRIPT_VERSION}}"
+readonly VERSION="${VERSION:-${DEFAULT_IMAGE_VERSION}}"
+readonly SCRIPT_VERSION="${SCRIPT_VERSION:-${DEFAULT_GIT_BRANCH}}"
 readonly DONT_CHECK="${DONT_CHECK:-0}"
 readonly DONT_PULL="${DONT_PULL:-0}"
 readonly DONT_CLEAN="${DONT_CLEAN:-0}"
@@ -204,10 +212,11 @@ fi
 msgbox debug "Script was invoked with the following parameters:"
 declare -a parameters_to_print
 parameters_to_print=(
-    DEBUG VERBOSITY CONTAINER_TOOL IMAGE VERSION SCRIPT_VERSION DONT_CHECK DONT_PULL DONT_CLEAN DRYRUN INTERACTIVE
-    CONTAINER_EXTRA_ARGS ZWIFT_USERNAME ZWIFT_PASSWORD ZWIFT_WORKOUT_DIR ZWIFT_ACTIVITY_DIR ZWIFT_LOG_DIR ZWIFT_SCREENSHOTS_DIR
-    ZWIFT_OVERRIDE_GRAPHICS ZWIFT_OVERRIDE_RESOLUTION ZWIFT_FG ZWIFT_NO_GAMEMODE WINE_EXPERIMENTAL_WAYLAND NETWORKING ZWIFT_UID
-    ZWIFT_GID VGA_DEVICE_FLAG PRIVILEGED_CONTAINER DBUS_SESSION_BUS_ADDRESS DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR
+    DEBUG VERBOSITY ENABLE_UNSTABLE CONTAINER_TOOL IMAGE VERSION SCRIPT_VERSION DONT_CHECK DONT_PULL DONT_CLEAN DRYRUN
+    INTERACTIVE CONTAINER_EXTRA_ARGS ZWIFT_USERNAME ZWIFT_PASSWORD ZWIFT_WORKOUT_DIR ZWIFT_ACTIVITY_DIR ZWIFT_LOG_DIR
+    ZWIFT_SCREENSHOTS_DIR ZWIFT_OVERRIDE_GRAPHICS ZWIFT_OVERRIDE_RESOLUTION ZWIFT_FG ZWIFT_NO_GAMEMODE
+    WINE_EXPERIMENTAL_WAYLAND NETWORKING ZWIFT_UID ZWIFT_GID VGA_DEVICE_FLAG PRIVILEGED_CONTAINER DBUS_SESSION_BUS_ADDRESS
+    DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR
 )
 for parameter_to_print in "${parameters_to_print[@]}"; do
     parameter_print_value="$(declare -p "${parameter_to_print}")"
@@ -242,7 +251,7 @@ upgrade_script() {
     local install_script
 
     msgbox info "Downloading latest install script"
-    if ! install_script="$(curl -fsSL https://raw.githubusercontent.com/netbrain/zwift/master/bin/install.sh)"; then
+    if ! install_script="$(curl -fsSL "https://raw.githubusercontent.com/netbrain/zwift/${DEFAULT_GIT_BRANCH}/bin/install.sh")"; then
         msgbox error "Failed to download install script"
         return 1
     fi
@@ -254,7 +263,7 @@ upgrade_script() {
     fi
 }
 
-if [[ ${SCRIPT_VERSION} != "${LATEST_SCRIPT_VERSION}" ]]; then
+if [[ ${SCRIPT_VERSION} != "master" ]]; then
     msgbox warning "Using zwift.sh version ${SCRIPT_VERSION} instead of latest"
 fi
 if [[ ${DONT_CHECK} -ne 1 ]]; then
