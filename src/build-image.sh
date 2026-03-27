@@ -142,6 +142,7 @@ fi
 container_args+=(
     -e DISPLAY="${DISPLAY}"
     -v /tmp/.X11-unix:/tmp/.X11-unix
+    --ipc=host
 )
 if [[ -n ${XAUTHORITY} ]]; then
     container_args+=(

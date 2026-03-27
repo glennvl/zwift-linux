@@ -23,6 +23,7 @@ fi
 
 readonly VERBOSITY="${VERBOSITY:-1}"
 readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
+readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
 readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
@@ -137,14 +138,15 @@ install_zwift() {
     msgbox info "Installing prerequisites using winetricks"
     winetricks -q dotnet20 dotnet48 d3dcompiler_47 || return 1
 
-    # download and install webview 2
-    msgbox info "Downloading and installing webview2"
-    wget -O webview2-setup.exe https://go.microsoft.com/fwlink/p/?LinkId=2124703 || return 1
-    wine webview2-setup.exe /silent /install || return 1
-
     # enable Wayland support, requires DISPLAY to be blank to use Wayland
     msgbox info "Enabling Wayland support"
     wine reg.exe add HKCU\\Software\\Wine\\Drivers /v Graphics /d x11,wayland || return 1
+
+    # Use glx instead of egl
+    if [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
+        msgbox info "Disabling EGL (using GLX instead)"
+        wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /v UseEGL /d N || return 1
+    fi
 
     # download and install zwift
     msgbox info "Downloading and installing Zwift"
@@ -170,7 +172,6 @@ cleanup() {
     msgbox info "Removing installation artifacts"
     # remove downloads and cache
     rm -- "${ZWIFT_HOME}/ZwiftSetup.exe" || true
-    rm -- "${ZWIFT_HOME}/webview2-setup.exe" || true
     rm -rf -- "${WINE_USER_HOME}/Downloads/Zwift" || true
     rm -rf -- "/home/user/.cache/wine*" || true
     # remove Zwift documents because it causes permission errors with podman
