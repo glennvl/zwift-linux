@@ -619,22 +619,28 @@ fi
 # - On tty, manually starting x11 with xstart, it remains tty
 # So we cannot rely on XDG_SESSION_TYPE to detect the window manager
 
+wayland_supported() {
+    [[ -n ${WAYLAND_DISPLAY} ]] && [[ -S ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY} ]]
+}
+
+x11_supported() {
+    local x11_display="${DISPLAY#*:}"
+    x11_display="${x11_display%.*}"
+    [[ -n ${DISPLAY} ]] && [[ -S /tmp/.X11-unix/X${x11_display} ]]
+}
+
 window_manager=""
 if [[ ${WINE_EXPERIMENTAL_WAYLAND} -eq 1 ]]; then
-    if [[ -n ${WAYLAND_DISPLAY} ]]; then
+    if wayland_supported; then
         window_manager="Wayland"
     else
         msgbox warning "WINE_EXPERIMENTAL_WAYLAND: Window manager is not Wayland, ignoring"
     fi
 fi
 if [[ -z ${window_manager} ]]; then
-    # DISPLAY is [host]:displaynumber[.screennumber] but the X11 socket is named
-    # by the display number alone, so strip the host prefix and screen suffix.
-    x11_display="${DISPLAY#*:}"
-    x11_display="${x11_display%.*}"
-    if [[ -n ${WAYLAND_DISPLAY} ]]; then
+    if wayland_supported; then
         window_manager="XWayland"
-    elif [[ -n ${DISPLAY} ]] && [[ -S /tmp/.X11-unix/X${x11_display} ]]; then
+    elif x11_supported; then
         window_manager="XOrg"
     else # no window manager, tty?
         msgbox error "Can't run Zwift without window manager"
@@ -644,47 +650,43 @@ fi
 
 # Setup Flags for Window Managers
 
+if x11_supported; then
+    container_env_vars+=(DISPLAY="${DISPLAY}")
+fi
+
+if wayland_supported; then
+    container_env_vars+=(WAYLAND_DISPLAY="${WAYLAND_DISPLAY}")
+    container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${container_runtime_dir}/${WAYLAND_DISPLAY}")
+fi
+
+if [[ -d /tmp/.X11-unix ]]; then
+    container_args+=(-v /tmp/.X11-unix:/tmp/.X11-unix)
+fi
+
+if [[ -n ${XAUTHORITY} ]]; then
+    container_env_vars+=(XAUTHORITY="/tmp/.Xauthority")
+    container_args+=(-v "${XAUTHORITY}:/tmp/.Xauthority")
+fi
+
 if [[ ${window_manager} == "Wayland" ]]; then
     msgbox info "Using Wayland window manager"
 
-    if [[ -n ${XDG_RUNTIME_DIR} ]] && [[ -n ${WAYLAND_DISPLAY} ]]; then
-        container_env_vars+=(
-            WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
-            WINE_EXPERIMENTAL_WAYLAND="1"
-        )
-        container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${container_runtime_dir}/${WAYLAND_DISPLAY}")
-    else
-        msgbox error "Required environment variables XDG_RUNTIME_DIR and/or WAYLAND_DISPLAY are not set"
-        msgbox error "Falling back to XWayland" 5
-        window_manager="XWayland"
-    fi
+    container_env_vars+=(XDG_SESSION_TYPE="wayland")
 fi
 
 xhost_access_required=0
 if [[ ${window_manager} == "XWayland" ]] || [[ ${window_manager} == "XOrg" ]]; then
     msgbox info "Using X11 window manager (${window_manager})"
 
-    # Share host IPC namespace so Mesa can attach to X11 shared memory (needed for DRI2/DRI3)
+    container_env_vars+=(XDG_SESSION_TYPE="x11")
     container_args+=(--ipc=host)
 
-    if [[ -n ${DISPLAY} ]]; then
-        container_env_vars+=(DISPLAY="${DISPLAY}")
-    else
-        msgbox error "Required environment variable DISPLAY is not set"
-        exit 1
-    fi
-
-    if [[ -d /tmp/.X11-unix ]]; then
-        container_args+=(-v /tmp/.X11-unix:/tmp/.X11-unix)
-    else
+    if [[ ! -d /tmp/.X11-unix ]]; then
         msgbox error "X11 socket does not exist at /tmp/.X11-unix"
         exit 1
     fi
 
-    if [[ -n ${XAUTHORITY} ]]; then
-        container_env_vars+=(XAUTHORITY="/tmp/.Xauthority")
-        container_args+=(-v "${XAUTHORITY}:/tmp/.Xauthority")
-    else
+    if [[ -z ${XAUTHORITY} ]]; then
         msgbox info "XAUTHORITY environment variable not set, container access to X11 needs to be granted with xhost"
         xhost_access_required=1
     fi
