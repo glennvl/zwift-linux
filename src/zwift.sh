@@ -152,7 +152,7 @@ readonly DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}"
 readonly DISPLAY="${DISPLAY:-}"
 readonly WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}"
 readonly XAUTHORITY="${XAUTHORITY:-}"
-readonly XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
+readonly XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/${UID}}"
 
 # Initialize user configuration environment variables
 readonly VERBOSITY="${VERBOSITY:-1}"
@@ -691,12 +691,17 @@ if [[ -n ${DBUS_SESSION_BUS_ADDRESS} ]]; then
     fi
 fi
 
-# Configure sound driver
-container_env_vars+=(PULSE_SERVER="/run/user/${container_uid}/pulse/native")
-if [[ -d "/run/user/${local_uid}/pulse" ]]; then
-    container_args+=(-v "/run/user/${local_uid}/pulse:/run/user/${container_uid}/pulse")
+# Configure sound driver: PulseAudio or PipeWire
+if [[ -S "${XDG_RUNTIME_DIR}/pulse/native" ]]; then
+    msgbox info "Using PulseAudio sound driver"
+    container_env_vars+=(PULSE_SERVER="/run/user/${container_uid}/pulse/native")
+    container_args+=(-v "${XDG_RUNTIME_DIR}/pulse:/run/user/${container_uid}/pulse")
+elif [[ -S "${XDG_RUNTIME_DIR}/pipewire-0" ]]; then
+    msgbox info "Using PipeWire sound driver"
+    container_env_vars+=(PIPEWIRE_RUNTIME_DIR="/run/user/${container_uid}")
+    container_args+=(-v "${XDG_RUNTIME_DIR}/pipewire-0:/run/user/${container_uid}/pipewire-0")
 else
-    msgbox warning "PulseAudio socket /run/user/${local_uid}/pulse not found — audio may not work (PipeWire-only system?)"
+    msgbox warning "No sound driver detected"
 fi
 
 # Check for proprietary nvidia driver and set correct device to use (respects existing VGA_DEVICE_FLAG)
@@ -712,7 +717,7 @@ elif [[ -f "/proc/driver/nvidia/version" ]]; then
         container_args+=(--gpus="all")
     fi
 else
-    container_args+=(--device="/dev/dri:/dev/dri")
+    container_args+=(--device="/dev/dri")
 fi
 
 ###########################
