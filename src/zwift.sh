@@ -376,6 +376,7 @@ fi
 container_env_vars+=(
     DEBUG="${DEBUG}"
     VERBOSITY="${VERBOSITY}"
+    XDG_RUNTIME_DIR="/run/user/${container_uid}"
     ZWIFT_UID="${container_uid}"
     ZWIFT_GID="${container_gid}"
     CONTAINER_TOOL="${CONTAINER_TOOL}"
@@ -589,18 +590,26 @@ fi
 # - On tty, manually starting x11 with xstart, it remains tty
 # So we cannot rely on XDG_SESSION_TYPE to detect the window manager
 
+is_wm_wayland() {
+    [[ -n ${WAYLAND_DISPLAY} ]] && [[ -S ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY} ]]
+}
+
+is_wm_xorg() {
+    [[ -n ${DISPLAY} ]] && [[ -S /tmp/.X11-unix/X${DISPLAY#*:} ]]
+}
+
 window_manager=""
 if [[ ${WINE_EXPERIMENTAL_WAYLAND} -eq 1 ]]; then
-    if [[ -n ${WAYLAND_DISPLAY} ]]; then
+    if is_wm_wayland; then
         window_manager="Wayland"
     else
         msgbox warning "WINE_EXPERIMENTAL_WAYLAND: Window manager is not Wayland, ignoring"
     fi
 fi
 if [[ -z ${window_manager} ]]; then
-    if [[ -n ${WAYLAND_DISPLAY} ]]; then
+    if is_wm_wayland; then
         window_manager="XWayland"
-    elif [[ -n ${DISPLAY} ]] && [[ -S /tmp/.X11-unix/X${DISPLAY#*:} ]]; then
+    elif is_wm_xorg; then
         window_manager="XOrg"
     else # no window manager, tty?
         msgbox error "Can't run Zwift without window manager"
@@ -610,6 +619,21 @@ fi
 
 # Setup Flags for Window Managers
 
+container_args+=(-v "${XDG_RUNTIME_DIR}:/run/user/${container_uid}")
+
+if [[ -n ${DISPLAY} ]]; then
+    container_env_vars+=(DISPLAY="${DISPLAY}")
+fi
+
+if [[ -d /tmp/.X11-unix ]]; then
+    container_args+=(-v /tmp/.X11-unix:/tmp/.X11-unix)
+fi
+
+if [[ -n ${XAUTHORITY} ]]; then
+    container_env_vars+=(XAUTHORITY="${XAUTHORITY//${local_uid}/${container_uid}}")
+    container_args+=(-v "${XAUTHORITY}:${XAUTHORITY//${local_uid}/${container_uid}}")
+fi
+
 if [[ ${window_manager} == "Wayland" ]]; then
     msgbox info "Using Wayland window manager"
 
@@ -618,45 +642,35 @@ if [[ ${window_manager} == "Wayland" ]]; then
         exit 1
     fi
 
-    if [[ -n ${XDG_RUNTIME_DIR} ]] && [[ -n ${WAYLAND_DISPLAY} ]]; then
-        container_env_vars+=(
-            XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR//${local_uid}/${container_uid}}"
-            WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
-            WINE_EXPERIMENTAL_WAYLAND="1"
-        )
-        container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${XDG_RUNTIME_DIR//${local_uid}/${container_uid}}/${WAYLAND_DISPLAY}")
-    else
-        msgbox error "Required environment variables XDG_RUNTIME_DIR and/or WAYLAND_DISPLAY are not set"
-        msgbox error "Falling back to XWayland" 5
-        window_manager="XWayland"
-    fi
+    container_env_vars+=(
+        XDG_SESSION_TYPE="wayland"
+        QT_QPA_PLATFORM="wayland"
+        GDK_BACKEND="wayland"
+        WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
+        WINE_EXPERIMENTAL_WAYLAND="1"
+    )
+
+    container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/run/user/${container_uid}/${WAYLAND_DISPLAY}")
 fi
 
 xhost_access_required=0
 if [[ ${window_manager} == "XWayland" ]] || [[ ${window_manager} == "XOrg" ]]; then
     msgbox info "Using X11 window manager (${window_manager})"
 
-    # Share host IPC namespace so Mesa can attach to X11 shared memory (needed for DRI2/DRI3)
+    container_env_vars+=(XDG_SESSION_TYPE="x11")
     container_args+=(--ipc=host)
 
-    if [[ -n ${DISPLAY} ]]; then
-        container_env_vars+=(DISPLAY="${DISPLAY}")
-    else
+    if [[ -z ${DISPLAY} ]]; then
         msgbox error "Required environment variable DISPLAY is not set"
         exit 1
     fi
 
-    if [[ -d /tmp/.X11-unix ]]; then
-        container_args+=(-v /tmp/.X11-unix:/tmp/.X11-unix)
-    else
+    if [[ ! -d /tmp/.X11-unix ]]; then
         msgbox error "X11 socket does not exist at /tmp/.X11-unix"
         exit 1
     fi
 
-    if [[ -n ${XAUTHORITY} ]]; then
-        container_env_vars+=(XAUTHORITY="${XAUTHORITY//${local_uid}/${container_uid}}")
-        container_args+=(-v "${XAUTHORITY}:${XAUTHORITY//${local_uid}/${container_uid}}")
-    else
+    if [[ -z ${XAUTHORITY} ]]; then
         msgbox info "XAUTHORITY environment variable not set, container access to X11 needs to be granted with xhost"
         xhost_access_required=1
     fi
