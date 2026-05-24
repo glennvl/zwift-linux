@@ -2,9 +2,9 @@ FROM quay.io/archlinux/archlinux:multilib-devel AS wine-base
 
 RUN pacman-key --init && pacman-key --populate archlinux && pacman -Syu --noconfirm
 
-RUN pacman -S --needed --noconfirm umu-launcher wget vulkan-radeon lib32-mesa lib32-vulkan-radeon nvidia-utils lib32-nvidia-utils vulkan-intel lib32-vulkan-intel tar xz
+RUN pacman -S --needed --noconfirm umu-launcher wget vulkan-{radeon,intel} nvidia-utils tar xz
 
-RUN pacman -S --needed --noconfirm mesa-utils
+RUN pacman -S --needed --noconfirm mesa-utils vulkan-tools
 
 RUN pacman -Scc
 
