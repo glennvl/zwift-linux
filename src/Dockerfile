@@ -17,10 +17,10 @@ RUN useradd -m  user \
 # ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
 
 ADD --chown=user:user https://cdn.zwift.com/app/ZwiftSetup.exe /home/user/ZwiftSetup.exe
-ADD --chown=user:user https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-11.0-20260506-slr/proton-cachyos-11.0-20260506-slr-x86_64.tar.xz /tmp/proton.tar.xz
+ADD --chown=user:user https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton10-34/GE-Proton10-34.tar.gz /tmp/proton.tar.xz
 
 RUN mkdir -p "/home/user/.local/share/Steam/compatibilitytools.d/"
-RUN tar -xJf /tmp/proton.tar.xz -C "/home/user/.local/share/Steam/compatibilitytools.d/"
+RUN tar -xf /tmp/proton.tar.xz -C "/home/user/.local/share/Steam/compatibilitytools.d/"
 
 RUN chown user:user -R "/home/user/"
 

@@ -12,8 +12,8 @@ if [[ ${DEBUG} -eq 1 ]]; then set -x; fi
 VERBOSITY="${VERBOSITY:-1}" # updated after loading user config files
 
 readonly USER_CONFIG_DIR="${HOME}/.config/zwift"
-readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
-readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
+readonly WINE_USER_HOME="/home/user/Games/umu/umu-zwift/drive_c/users/user"
+readonly ZWIFT_HOME="/home/user/Games/umu/umu-zwift/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
 
 if [[ -t 1 ]]; then
@@ -364,8 +364,9 @@ container_args+=(
     --rm
     --replace
     --pull=newer
-    -v zwift-cache-games:/home/user/Games
-    -v zwift-cache-umu:/home/user/.local/share/umu
+    -v ./src/run_zwift.sh:/bin/run_zwift.sh
+    -v zwift-games:/home/user/Games
+    -v zwift-umu:/home/user/.local/share/umu
     --network "${NETWORKING}"
     --name "zwift-${USER}"
     --hostname "${HOSTNAME}"
@@ -758,8 +759,8 @@ if [[ ${xhost_access_required} -eq 1 ]]; then
 fi
 
 if [[ ${CONTAINER_TOOL} == "podman" ]]; then
-    ${CONTAINER_TOOL} volume create --ignore zwift-cache-games;
-    ${CONTAINER_TOOL} volume create --ignore zwift-cache-umu;
+    ${CONTAINER_TOOL} volume create --ignore zwift-games;
+    ${CONTAINER_TOOL} volume create --ignore zwift-umu;
 else
     # TODO: not sure if docker is idempotent, better test and maybe check for existance before
     ${CONTAINER_TOOL} volume create zwift-cache-games;
