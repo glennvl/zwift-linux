@@ -761,6 +761,7 @@ if [[ ${CONTAINER_TOOL} == "podman" ]]; then
     ${CONTAINER_TOOL} volume create --ignore zwift-cache-games;
     ${CONTAINER_TOOL} volume create --ignore zwift-cache-umu;
 else
+    # TODO: not sure if docker is idempotent, better test and maybe check for existance before
     ${CONTAINER_TOOL} volume create zwift-cache-games;
     ${CONTAINER_TOOL} volume create zwift-cache-umu;
 fi

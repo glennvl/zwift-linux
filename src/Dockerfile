@@ -4,6 +4,8 @@ RUN pacman -Sy
 
 RUN pacman -S --noconfirm umu-launcher wget vulkan-radeon lib32-vulkan-radeon nvidia-utils lib32-nvidia-utils vulkan-intel lib32-vulkan-intel tar xz
 
+RUN pacman -S --noconfirm mesa-utils
+
 # Create passwordless user and make nvidia libraries discoverable
 RUN useradd -m  user \
  && echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
