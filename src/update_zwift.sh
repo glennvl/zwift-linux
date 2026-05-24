@@ -25,8 +25,8 @@ readonly VERBOSITY="${VERBOSITY:-1}"
 readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
 
-readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
-readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
+readonly WINE_USER_HOME="/home/user/Games/umu/umu-zwift/drive_c/users/user"
+readonly ZWIFT_HOME="/home/user/Games/umu/umu-zwift/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
 
 msgbox() {
@@ -92,7 +92,7 @@ update_zwift_using_launcher() {
     fi
 
     msgbox info "Starting Zwift launcher using wine"
-    if ! wine start ZwiftLauncher.exe SilentLaunch; then
+    if ! GAMEID=umu-zwift PROTONPATH="/home/user/.local/share/Steam/compatibilitytools.d/proton-cachyos-11.0-20260506-slr-x86_64/" umu-run ZwiftLauncher.exe SilentLaunch; then
         msgbox error "Failed to start Zwift launcher using wine!"
         return 1
     fi
@@ -124,28 +124,9 @@ update_zwift_using_launcher() {
 }
 
 install_zwift() {
-    # prevent wine from installing mono and gecko
-    msgbox info "Initializing wine"
-    WINEDLLOVERRIDES="mscoree,mshtml=" wineboot -u || return 1
-
-    msgbox info "Installing prerequisites using winetricks"
-    winetricks -q corefonts dotnet48 d3dcompiler_47 || return 1
-
-    msgbox info "Downloading and installing webview2"
-    wget -O webview2-setup.exe https://go.microsoft.com/fwlink/p/?LinkId=2124703 || return 1
-    wine webview2-setup.exe /silent /install || return 1
-
-    msgbox info "Enabling Wayland support"
-    wine reg.exe add 'HKCU\Software\Wine\Drivers' /v Graphics /d x11,wayland || return 1
-
-    if [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
-        msgbox info "Disabling EGL (using GLX instead)"
-        wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /v UseEGL /d N || return 1
-    fi
-
     msgbox info "Downloading and installing Zwift"
     wget https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
-    wine ZwiftSetup.exe /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL || return 1
+    GAMEID=umu-zwift PROTONPATH="/home/user/.local/share/Steam/compatibilitytools.d/proton-cachyos-11.0-20260506-slr-x86_64/" umu-run ZwiftSetup.exe /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL || return 1
 }
 
 ###########################
@@ -160,15 +141,11 @@ fi
 ##### Automatically cleanup on exit #####
 
 cleanup() {
-    msgbox info "Stopping wine server"
-    wineserver -k || true # important, Zwift launcher won't stop until wine server is killed
-
     msgbox info "Removing installation artifacts"
     # remove downloads and cache
     rm -- "${ZWIFT_HOME}/ZwiftSetup.exe" || true
-    rm -- "${ZWIFT_HOME}/webview2-setup.exe" || true
     rm -rf -- "${WINE_USER_HOME}/Downloads/Zwift" || true
-    rm -rf -- "/home/user/.cache/wine*" || true
+#    rm -rf -- "/home/user/.cache/wine*" || true
     # remove Zwift documents because it causes permission errors with podman
     rm -rf -- "${ZWIFT_DOCS}" || true
 }

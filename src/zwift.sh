@@ -362,6 +362,7 @@ container_env_vars+=(
 # Define base container parameters
 container_args+=(
     --rm
+    -v ./src/run_zwift.sh://bin/run_zwift.sh
     --network "${NETWORKING}"
     --name "zwift-${USER}"
     --hostname "${HOSTNAME}"

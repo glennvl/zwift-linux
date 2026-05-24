@@ -155,7 +155,7 @@ trap cleanup EXIT
 
 msgbox info "Starting Zwift launcher using wine"
 
-if ! wine start ZwiftLauncher.exe SilentLaunch || ! wait_until_wine_task_started ZwiftLauncher.exe; then
+if ! GAMEID=umu-zwift PROTONPATH="/home/user/.local/share/Steam/compatibilitytools.d/proton-cachyos-11.0-20260506-slr-x86_64/" umu-run "/home/user/.wine/drive_c/Program Files (x86)Zwift/ZwiftLauncher.exe" SilentLaunch || ! wait_until_wine_task_started ZwiftLauncher.exe; then
     msgbox error "Failed to start Zwift launcher using wine!"
     exit 1
 fi
