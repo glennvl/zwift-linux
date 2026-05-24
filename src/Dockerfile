@@ -1,10 +1,12 @@
-FROM archlinux:multilib-devel AS wine-base
+FROM quay.io/archlinux/archlinux:multilib-devel AS wine-base
 
-RUN pacman -Sy
+RUN pacman-key --init && pacman-key --populate archlinux && pacman -Syu --noconfirm
 
-RUN pacman -S --noconfirm umu-launcher wget vulkan-radeon lib32-vulkan-radeon nvidia-utils lib32-nvidia-utils vulkan-intel lib32-vulkan-intel tar xz
+RUN pacman -S --needed --noconfirm umu-launcher wget vulkan-radeon lib32-mesa lib32-vulkan-radeon nvidia-utils lib32-nvidia-utils vulkan-intel lib32-vulkan-intel tar xz
 
-RUN pacman -S --noconfirm mesa-utils
+RUN pacman -S --needed --noconfirm mesa-utils
+
+RUN pacman -Scc
 
 # Create passwordless user and make nvidia libraries discoverable
 RUN useradd -m  user \
@@ -18,7 +20,7 @@ ADD --chown=user:user https://cdn.zwift.com/app/ZwiftSetup.exe /home/user/ZwiftS
 ADD --chown=user:user https://github.com/CachyOS/proton-cachyos/releases/download/cachyos-11.0-20260506-slr/proton-cachyos-11.0-20260506-slr-x86_64.tar.xz /tmp/proton.tar.xz
 
 RUN mkdir -p "/home/user/.local/share/Steam/compatibilitytools.d/"
-RUN tar -xJvf /tmp/proton.tar.xz -C "/home/user/.local/share/Steam/compatibilitytools.d/"
+RUN tar -xJf /tmp/proton.tar.xz -C "/home/user/.local/share/Steam/compatibilitytools.d/"
 
 RUN chown user:user -R "/home/user/"
 
