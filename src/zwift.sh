@@ -362,7 +362,10 @@ container_env_vars+=(
 # Define base container parameters
 container_args+=(
     --rm
-    -v ./src/run_zwift.sh://bin/run_zwift.sh
+    --replace
+    --pull=newer
+    -v zwift-cache-games:/home/user/Games
+    -v zwift-cache-umu:/home/user/.local/share/umu
     --network "${NETWORKING}"
     --name "zwift-${USER}"
     --hostname "${HOSTNAME}"
@@ -752,6 +755,14 @@ if [[ ${xhost_access_required} -eq 1 ]]; then
         msgbox error "Container requires X11 access, but invoking xhost failed"
         exit 1
     fi
+fi
+
+if [[ ${CONTAINER_TOOL} == "podman" ]]; then
+    ${CONTAINER_TOOL} volume create --ignore zwift-cache-games;
+    ${CONTAINER_TOOL} volume create --ignore zwift-cache-umu;
+else
+    ${CONTAINER_TOOL} volume create zwift-cache-games;
+    ${CONTAINER_TOOL} volume create zwift-cache-umu;
 fi
 
 # Launch Zwift!

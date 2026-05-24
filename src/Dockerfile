@@ -42,3 +42,5 @@ COPY --chmod=755 zwift-auth.sh /bin/zwift-auth
 COPY --chown=user:user protonfixes_zwift.py /home/user/.config/protonfixes/localfixes/umu-zwift.py
 
 ENTRYPOINT ["entrypoint"]
+
+USER user

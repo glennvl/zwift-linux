@@ -28,8 +28,8 @@ readonly ZWIFT_PASSWORD="${ZWIFT_PASSWORD:-}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
 
-readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
-readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
+readonly WINE_USER_HOME="/home/user/Games/umu/umu-zwift/drive_c/users/user"
+readonly ZWIFT_HOME="/home/user/Games/umu/umu-zwift/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
 readonly ZWIFT_PREFS="${ZWIFT_DOCS}/prefs.xml"
 
@@ -50,48 +50,6 @@ msgbox() {
     esac
 }
 
-wine_task_info() {
-    local task_name="${1:?}"
-    wine tasklist /fo list /fi "IMAGENAME eq ${task_name}"
-}
-
-wine_task_pid() {
-    local task_name="${1:?}"
-    wine_task_info "${task_name}" | grep -m1 -Po '^PID:[\t ]*\K[0-9]+'
-}
-
-is_wine_task_running() {
-    local task_name="${1:?}"
-    [[ -n $(wine_task_info "${task_name}" || true) ]]
-}
-
-kill_wine_tasks() {
-    for task in "${@}"; do
-        msgbox debug "Killing wine task '${task}'"
-        wine taskkill /f /im "${task}" > /dev/null 2>&1 || true
-    done
-}
-
-wait_until() {
-    local condition="${1:?}"
-    local timeout="${2:-20}"
-    local delay="${3:-0.1}"
-    local counter=1
-
-    while ! eval "${condition}" && [[ ${counter} -le ${timeout} ]]; do
-        msgbox debug "Waiting... (${counter}/${timeout})"
-        sleep "${delay}"
-        ((counter++))
-    done
-
-    eval "${condition}"
-}
-
-wait_until_wine_task_started() {
-    local task_name="${1:?}"
-    msgbox info "Waiting for ${task_name} to start..."
-    wait_until "is_wine_task_running ${task_name}"
-}
 
 ###########################
 ##### Configure Zwift #####
@@ -127,16 +85,6 @@ if [[ -n ${ZWIFT_USERNAME} ]] && [[ -n ${ZWIFT_PASSWORD} ]]; then
     fi
 fi
 
-##########################################
-##### Automatically stop wine server #####
-
-cleanup() {
-    msgbox info "Stopping wine server"
-    wineserver -k || true
-}
-
-trap cleanup EXIT
-
 ##################################
 ##### Start Zwift using wine #####
 
@@ -155,46 +103,8 @@ trap cleanup EXIT
 
 msgbox info "Starting Zwift launcher using wine"
 
-if ! GAMEID=umu-zwift PROTONPATH="/home/user/.local/share/Steam/compatibilitytools.d/proton-cachyos-11.0-20260506-slr-x86_64/" umu-run "/home/user/.wine/drive_c/Program Files (x86)Zwift/ZwiftLauncher.exe" SilentLaunch || ! wait_until_wine_task_started ZwiftLauncher.exe; then
+if ! GAMEID=umu-zwift PROTONPATH="/home/user/.local/share/Steam/compatibilitytools.d/proton-cachyos-11.0-20260506-slr-x86_64/" umu-run "${ZWIFT_HOME}/ZwiftLauncher.exe"; then
     msgbox error "Failed to start Zwift launcher using wine!"
     exit 1
 fi
 
-if ! launcher_pid="$(wine_task_pid ZwiftLauncher.exe)"; then
-    msgbox error "Unable to get launcher process id. Did it crash?"
-    exit 1
-fi
-
-msgbox ok "Zwift launcher started using wine"
-msgbox info "Starting Zwift using wine"
-
-declare -a zwift_cmd
-
-if [[ ${ZWIFT_NO_GAMEMODE} -eq 1 ]]; then
-    msgbox info "Not using gamemode"
-    zwift_cmd=(wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
-else
-    msgbox info "Using gamemode"
-    zwift_cmd=(/usr/games/gamemoderun wine /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
-fi
-
-if ! "${zwift_cmd[@]}" || ! wait_until_wine_task_started ZwiftApp.exe; then
-    msgbox error "Failed to start Zwift using wine!"
-    exit 1
-fi
-
-msgbox info "Killing Zwift launcher and background tasks"
-kill_wine_tasks ZwiftLauncher.exe ZwiftWindowsCrashHandler.exe MicrosoftEdgeUpdate.exe
-
-msgbox ok "Zwift started using wine"
-
-##################################
-##### Wait for Zwift to exit #####
-
-counter=1
-while is_wine_task_running ZwiftApp.exe; do
-    msgbox debug "Waiting for Zwift to exit... ($((counter++)))"
-    sleep 5
-done
-
-msgbox info "Zwift closed, exiting"

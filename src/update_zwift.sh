@@ -125,8 +125,8 @@ update_zwift_using_launcher() {
 
 install_zwift() {
     msgbox info "Downloading and installing Zwift"
-    wget https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
-    GAMEID=umu-zwift PROTONPATH="/home/user/.local/share/Steam/compatibilitytools.d/proton-cachyos-11.0-20260506-slr-x86_64/" umu-run ZwiftSetup.exe /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL || return 1
+#    wget https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
+    GAMEID=umu-zwift PROTONPATH="/home/user/.local/share/Steam/compatibilitytools.d/proton-cachyos-11.0-20260506-slr-x86_64/" umu-run /home/user/ZwiftSetup.exe /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL || return 1
 }
 
 ###########################
