@@ -23,6 +23,9 @@ RUN pacman -S --needed --noconfirm mesa-utils vulkan-tools
 
 RUN pacman -Scc
 
+# locale for umu/steamrt
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen
+
 # Create passwordless user and make nvidia libraries discoverable
 RUN useradd -m  user
 
