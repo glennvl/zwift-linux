@@ -103,7 +103,7 @@ fi
 
 msgbox info "Starting Zwift launcher using wine"
 
-if ! GAMEID=umu-zwift umu-run "${ZWIFT_HOME}/ZwiftLauncher.exe"; then
+if ! umu-run "${ZWIFT_HOME}/ZwiftLauncher.exe"; then
     msgbox error "Failed to start Zwift launcher using wine!"
     exit 1
 fi

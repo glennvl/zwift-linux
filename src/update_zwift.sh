@@ -92,7 +92,7 @@ update_zwift_using_launcher() {
     fi
 
     msgbox info "Starting Zwift launcher using wine"
-    if ! GAMEID=umu-zwift umu-run ZwiftLauncher.exe SilentLaunch; then
+    if ! umu-run ZwiftLauncher.exe SilentLaunch; then
         msgbox error "Failed to start Zwift launcher using wine!"
         return 1
     fi
@@ -126,7 +126,7 @@ update_zwift_using_launcher() {
 install_zwift() {
     msgbox info "Downloading and installing Zwift"
 #    wget https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
-    GAMEID=umu-zwift umu-run /home/user/ZwiftSetup.exe /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL || return 1
+    umu-run /home/user/ZwiftSetup.exe /SP- /VERYSILENT /SUPPRESSMSGBOXES /NORESTART /NOCANCEL || return 1
 }
 
 ###########################
