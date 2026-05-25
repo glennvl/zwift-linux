@@ -364,6 +364,7 @@ container_args+=(
     --rm
     --replace
     --pull=newer
+    -v /dev/ntsync:/dev/ntsync
     -v ./src/run_zwift.sh:/bin/run_zwift.sh
     -v zwift-games:/home/user/Games
     -v zwift-umu:/home/user/.local/share/umu
