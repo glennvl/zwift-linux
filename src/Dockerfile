@@ -12,11 +12,9 @@ RUN pacman-key --init && pacman-key --populate archlinux && pacman -Syu --noconf
 
 # launcher for proton (wine): umu-launcher
 # 32-bit + 64-bit mesa graphics driver for nvidia, amd, intel: (lib32-)nvidia-utils/(lib32-)vulkan-*
-# necessary tools for wayland: xrandr (xorg-xrandr)
 RUN pacman -S --needed --noconfirm umu-launcher  \
     wget tar \
-    {lib32-,}{nvidia-utils,vulkan-{radeon,intel}} \
-    xorg-xrandr
+    {lib32-,}{nvidia-utils,vulkan-{radeon,intel}}
 
 # DEBUG utils
 RUN pacman -S --needed --noconfirm mesa-utils vulkan-tools
@@ -59,7 +57,7 @@ ARG PROTON_PATH
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
-ENV WINEDEBUG=fixme-all
+ENV WINEDEBUG=err-all,fixme-all
 ENV PROTONPATH=${PROTON_PATH}
 ENV GAMEID=umu-zwift
 

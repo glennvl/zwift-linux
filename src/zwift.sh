@@ -357,7 +357,6 @@ container_env_vars+=(
     ZWIFT_UID="${container_uid}"
     ZWIFT_GID="${container_gid}"
     CONTAINER_TOOL="${CONTAINER_TOOL}"
-    WINEDEBUG=err-all,fixme-all
 )
 
 # Define base container parameters
