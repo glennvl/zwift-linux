@@ -371,7 +371,7 @@ container_args+=(
     --name "zwift-${USER}"
     --hostname "${HOSTNAME}"
     --env-file "${container_env_file}"
-    -v "zwift-${USER}:${ZWIFT_DOCS}"
+    -v "zwift-${USER}":"${ZWIFT_DOCS}"
 )
 
 ###################################################
