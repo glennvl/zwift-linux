@@ -27,8 +27,8 @@ readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g user)}"
 readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
 readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 
-readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
-readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
+readonly WINE_USER_HOME="/home/user/Games/umu/umu-zwift/drive_c/users/user"
+readonly ZWIFT_HOME="/home/user/Games/umu/umu-zwift/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
 
 msgbox() {

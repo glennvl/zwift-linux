@@ -1,102 +1,65 @@
-ARG DEBIAN_VERSION=trixie
+ARG PROTON_URL="https://github.com/GloriousEggroll/proton-ge-custom/releases/download/GE-Proton10-34/GE-Proton10-34.tar.gz"
+ARG PROTON_INSTALL_DIR="/home/user/.local/share/Steam/compatibilitytools.d/"
+ARG PROTON_PATH="${PROTON_INSTALL_DIR}/proton"
 
-FROM rust:1.95.0-slim-trixie AS build-runfromprocess
+FROM quay.io/archlinux/archlinux:multilib-devel AS wine-base
 
-ARG RUNFROMPROCESS_VERSION=a3d003c07d1bd11ff93c4cac96d2c3aa5deb8471
+ARG PROTON_PATH
+ARG PROTON_INSTALL_DIR
+ARG PROTON_URL
 
-# Install prerequisites
-# - mingw to cross-compile for windows
-# - rust cross-compiler for windows
-RUN DEBIAN_FRONTEND="noninteractive" apt-get update \
- && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y g++-mingw-w64-x86-64 \
- && rm -rf /var/lib/apt/lists/* \
- && rustup target add x86_64-pc-windows-gnu
+RUN pacman-key --init && pacman-key --populate archlinux && pacman -Syu --noconfirm
 
-# Build runfromprocess
-WORKDIR /usr/src
-ADD https://github.com/quietvoid/runfromprocess-rs.git#${RUNFROMPROCESS_VERSION} .
-RUN cargo build --target x86_64-pc-windows-gnu --release
+# launcher for proton (wine): umu-launcher
+# 32-bit + 64-bit mesa graphics driver for nvidia, amd, intel: (lib32-)nvidia-utils/(lib32-)vulkan-*
+RUN pacman -S --needed --noconfirm umu-launcher  \
+    wget tar \
+    {lib32-,}{nvidia-utils,vulkan-{radeon,intel}}
 
-FROM debian:${DEBIAN_VERSION}-slim AS wine-base
+# DEBUG utils
+RUN pacman -S --needed --noconfirm mesa-utils vulkan-tools
 
-# Wine
-# - 11.0     : support 32-bit applications through wow64
-# - 10.17    : default to egl for opengl in x11
-# - 9.9      : support native wayland
-# Winetricks
-# - 20260125 : webview2 in zwift launcher works
-# - 20240105 : first version used in this Dockerfile
-ARG DEBIAN_VERSION
-ARG WINE_BRANCH="devel"
-ARG WINE_VERSION="=11.8~${DEBIAN_VERSION}-1"
-ARG WINETRICKS_VERSION=20260125
-ARG WINETRICKS_CHECKSUM=431f82fc74000e6c864409f1d8fb495d696c03928808e3e8acffc45179312a7b
+RUN pacman -Scc
 
-# Install prerequisites
-# - ca-certificates for wget and curl
-# - cabextract for winetricks
-# - curl used in zwift authentication script
-# - gamemode for freedesktop screensaver inhibit
-# - gosu for invoking scripts in entrypoint
-# - gpg for dearmoring winehq key
-# - libegl1 and libgl1 for GL library
-# - libvulkan1 for vulkan loader library
-# - mesa-utils for testing graphics: glxgears, eglgears_wayland, eglgears_x11
-# - procps for pgrep
-# - wget for downloading winehq key
-# - winbind for ntml_auth required by zwift/wine
-# - xdg-utils seems to be a dependency of wayland
-RUN dpkg --add-architecture i386 \
- && DEBIAN_FRONTEND="noninteractive" apt-get update \
- && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
-        ca-certificates \
-        cabextract \
-        curl \
-        gamemode \
-        gosu \
-        gpg \
-        libegl1 \
-        libgl1 \
-        libgamemode0.i386 \
-        libgamemodeauto0.i386 \
-        libvulkan1 \
-        mesa-utils \
-        procps \
-        wget \
-        winbind \
-        xdg-utils \
- && rm -rf /var/lib/apt/lists/*
-
-# Install wine (including recommends, see https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu)
-# hadolint ignore=DL3015
-RUN mkdir -p /etc/apt/keyrings \
- && wget -qO /tmp/winehq.key https://dl.winehq.org/wine-builds/winehq.key \
- && gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key /tmp/winehq.key \
- && rm -f /tmp/winehq.key \
- && wget -qNP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/debian/dists/${DEBIAN_VERSION}/winehq-${DEBIAN_VERSION}.sources \
- && DEBIAN_FRONTEND="noninteractive" apt-get update \
- && DEBIAN_FRONTEND="noninteractive" apt-get install --install-recommends -y winehq-${WINE_BRANCH}${WINE_VERSION} \
- && rm -rf /var/lib/apt/lists/*
-
-# Download winetricks
-ADD --checksum=sha256:${WINETRICKS_CHECKSUM} --chmod=755 https://raw.githubusercontent.com/Winetricks/winetricks/${WINETRICKS_VERSION}/src/winetricks /usr/local/bin/
+# locale for umu/steamrt
+RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen
 
 # Create passwordless user and make nvidia libraries discoverable
-RUN adduser --disabled-password --gecos '' user \
- && echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
- && echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+RUN useradd -m  user
 
-# Required for non-glvnd setups
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
+ && echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
 
 # Configure audio driver
 COPY pulse-client.conf /etc/pulse/client.conf
 
+USER user
+WORKDIR /home/user
+
+# Required for non-glvnd setups
+# ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
+
+ADD --chown=user:user https://cdn.zwift.com/app/ZwiftSetup.exe ZwiftSetup.exe
+
+ENV PROTONPATH=${PROTON_PATH}
+
+# Proton
+RUN mkdir -p ".local/share/Steam/compatibilitytools.d/"
+
+RUN curl -L ${PROTON_URL} | tar -x -z -C ${PROTON_INSTALL_DIR} -f -
+
+# stable proton path
+RUN ln -s "$(find ${PROTON_INSTALL_DIR} -mindepth 1 -maxdepth 1 -type d)" "${PROTON_PATH}"
+
 FROM wine-base
+
+ARG PROTON_PATH
 
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
-ENV WINEDEBUG=fixme-all
+ENV WINEDEBUG=err-all,fixme-all
+ENV PROTONPATH=${PROTON_PATH}
+ENV GAMEID=umu-zwift
 
 LABEL org.opencontainers.image.authors="Kim Eik <kim@heldig.org>"
 LABEL org.opencontainers.image.title="netbrain/zwift"
@@ -107,6 +70,6 @@ COPY --chmod=755 entrypoint.sh /bin/entrypoint
 COPY --chmod=755 update_zwift.sh /bin/update_zwift.sh
 COPY --chmod=755 run_zwift.sh /bin/run_zwift.sh
 COPY --chmod=755 zwift-auth.sh /bin/zwift-auth
-COPY --from=build-runfromprocess /usr/src/target/x86_64-pc-windows-gnu/release/runfromprocess-rs.exe /bin/runfromprocess-rs.exe
+COPY --chown=user:user protonfixes_zwift.py /home/user/.config/protonfixes/localfixes/umu-zwift.py
 
 ENTRYPOINT ["entrypoint"]

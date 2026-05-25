@@ -12,8 +12,8 @@ if [[ ${DEBUG} -eq 1 ]]; then set -x; fi
 VERBOSITY="${VERBOSITY:-1}" # updated after loading user config files
 
 readonly USER_CONFIG_DIR="${HOME}/.config/zwift"
-readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
-readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
+readonly WINE_USER_HOME="/home/user/Games/umu/umu-zwift/drive_c/users/user"
+readonly ZWIFT_HOME="/home/user/Games/umu/umu-zwift/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
 
 if [[ -t 1 ]]; then
@@ -362,11 +362,17 @@ container_env_vars+=(
 # Define base container parameters
 container_args+=(
     --rm
+    --replace
+    --pull=newer
+    -v /dev/ntsync:/dev/ntsync
+    -v ./src/run_zwift.sh:/bin/run_zwift.sh
+    -v zwift-games:/home/user/Games
+    -v zwift-umu:/home/user/.local/share/umu
     --network "${NETWORKING}"
     --name "zwift-${USER}"
     --hostname "${HOSTNAME}"
     --env-file "${container_env_file}"
-    -v "zwift-${USER}:${ZWIFT_DOCS}"
+    -v "zwift-${USER}":"${ZWIFT_DOCS}"
 )
 
 ###################################################
@@ -620,6 +626,7 @@ if [[ ${window_manager} == "Wayland" ]]; then
         GDK_BACKEND="wayland"
         WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
         WINE_EXPERIMENTAL_WAYLAND="1"
+        PROTON_ENABLE_WAYLAND="1"
     )
 
     container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/run/user/${container_uid}/${WAYLAND_DISPLAY}")
@@ -751,6 +758,15 @@ if [[ ${xhost_access_required} -eq 1 ]]; then
         msgbox error "Container requires X11 access, but invoking xhost failed"
         exit 1
     fi
+fi
+
+if [[ ${CONTAINER_TOOL} == "podman" ]]; then
+    ${CONTAINER_TOOL} volume create --ignore zwift-games;
+    ${CONTAINER_TOOL} volume create --ignore zwift-umu;
+else
+    # TODO: not sure if docker is idempotent, better test and maybe check for existance before
+    ${CONTAINER_TOOL} volume create zwift-games;
+    ${CONTAINER_TOOL} volume create zwift-umu;
 fi
 
 # Launch Zwift!
