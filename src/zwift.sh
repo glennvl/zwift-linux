@@ -357,6 +357,7 @@ container_env_vars+=(
     ZWIFT_UID="${container_uid}"
     ZWIFT_GID="${container_gid}"
     CONTAINER_TOOL="${CONTAINER_TOOL}"
+    WINEDEBUG=err-all,fixme-all
 )
 
 # Define base container parameters
@@ -626,6 +627,7 @@ if [[ ${window_manager} == "Wayland" ]]; then
         GDK_BACKEND="wayland"
         WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
         WINE_EXPERIMENTAL_WAYLAND="1"
+        PROTON_ENABLE_WAYLAND="1"
     )
 
     container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/run/user/${container_uid}/${WAYLAND_DISPLAY}")
