@@ -121,6 +121,7 @@ container_args=(
     -e CONTAINER_TOOL="${CONTAINER_TOOL}"
     -e ZWIFT_UID="${CONTAINER_UID}"
     -e ZWIFT_GID="${CONTAINER_GID}"
+    -v /dev/ntsync:/dev/ntsync
 )
 
 if [[ ${CONTAINER_TOOL} == "podman" ]]; then
