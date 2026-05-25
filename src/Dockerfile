@@ -10,9 +10,14 @@ ARG PROTON_URL
 
 RUN pacman-key --init && pacman-key --populate archlinux && pacman -Syu --noconfirm
 
+# launcher for proton (wine): umu-launcher
+# 32-bit + 64-bit mesa graphics driver for nvidia, amd, intel: (lib32-)nvidia-utils/(lib32-)vulkan-*
+# necessary tools for wayland: xrandr (xorg-xrandr)
 RUN pacman -S --needed --noconfirm umu-launcher  \
     wget tar \
-    {lib32-,}{nvidia-utils,vulkan-{radeon,intel}}
+    {lib32-,}{nvidia-utils,vulkan-{radeon,intel}} \
+    xorg-xrandr
+
 # DEBUG utils
 RUN pacman -S --needed --noconfirm mesa-utils vulkan-tools
 
