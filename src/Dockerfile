@@ -40,6 +40,7 @@ ARG WINETRICKS_CHECKSUM=954d17f56ae5f4d32eb083193a4a838c73ae5ff6b91765d93b0eab59
 # - gamemode for freedesktop screensaver inhibit
 # - gosu for invoking scripts in entrypoint
 # - gpg for dearmoring winehq key
+# - gstreamer for h264 codec
 # - libegl1 and libgl1 for GL library
 # - libvulkan1 for vulkan loader library
 # - mesa-utils for testing graphics: glxgears, eglgears_wayland, eglgears_x11
@@ -56,10 +57,22 @@ RUN dpkg --add-architecture i386 \
         gamemode \
         gosu \
         gpg \
+        gstreamer1.0-plugins-base \
+        gstreamer1.0-plugins-good \
+        gstreamer1.0-plugins-bad \
+        gstreamer1.0-plugins-ugly \
+        gstreamer1.0-libav \
+        gstreamer1.0-tools \
+        gstreamer1.0-x \
+        gstreamer1.0-alsa \
+        gstreamer1.0-gl \
+        gstreamer1.0-gtk3 \
+        gstreamer1.0-qt5 \
+        gstreamer1.0-pulseaudio \
         libegl1 \
-        libgl1 \
         libgamemode0.i386 \
         libgamemodeauto0.i386 \
+        libgl1 \
         libvulkan1 \
         mesa-utils \
         procps \
