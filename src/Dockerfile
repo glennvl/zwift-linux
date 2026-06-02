@@ -17,6 +17,42 @@ WORKDIR /usr/src
 ADD https://github.com/quietvoid/runfromprocess-rs.git#${RUNFROMPROCESS_VERSION} .
 RUN cargo build --target x86_64-pc-windows-gnu --release
 
+FROM debian:${DEBIAN_VERSION}-slim AS build-nvidia-egl
+
+ARG EGL_EXTPLATFORM_VERSION=cf9f10589775c1b4d90f1df6f417f8cf1bed7ec6
+ARG EGL_X11_VERSION=4a89da50bd6a18788db8ce1aa459adc39d7ddb0b
+
+# Install prerequisites
+RUN DEBIAN_FRONTEND="noninteractive" apt-get update \
+ && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
+        build-essential \
+        cmake \
+        libdrm-dev \
+        libegl-dev \
+        libgbm-dev \
+        libx11-xcb-dev \
+        libxcb-present-dev \
+        meson \
+        ninja-build \
+        pkg-config \
+ && rm -rf /var/lib/apt/lists/*
+
+# Build nvidia egl libraries
+WORKDIR /usr/src/nvidia-egl
+ADD https://github.com/NVIDIA/eglexternalplatform.git#${EGL_EXTPLATFORM_VERSION} extplatform
+ADD https://github.com/NVIDIA/egl-x11.git#${EGL_X11_VERSION} x11
+# hadolint ignore=DL3003 # exception: cd is allowed in a subshell
+RUN <<EOF
+  for egl_lib in */; do
+    (
+      cd "${egl_lib}" || exit
+      meson setup build
+      ninja -C build
+      ninja -C build install
+    )
+  done
+EOF
+
 FROM debian:${DEBIAN_VERSION}-slim AS wine-base
 
 # Wine
@@ -95,16 +131,21 @@ RUN mkdir -p /etc/apt/keyrings \
 # Download winetricks
 ADD --checksum=sha256:${WINETRICKS_CHECKSUM} --chmod=755 https://raw.githubusercontent.com/Winetricks/winetricks/${WINETRICKS_VERSION}/src/winetricks /usr/local/bin/
 
-# Create passwordless user and make nvidia libraries discoverable
-RUN adduser --disabled-password --gecos '' user \
- && echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
- && echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+# Custom nvidia-egl build
+COPY --from=build-nvidia-egl /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xcb.so.1.0.6 /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xcb.so.1.0.6
+COPY --from=build-nvidia-egl /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xlib.so.1.0.6 /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xlib.so.1.0.6
+COPY --from=build-nvidia-egl /usr/local/share/egl/egl_external_platform.d/20_nvidia_xcb.json /usr/local/share/egl/egl_external_platform.d/20_nvidia_xcb.json
+COPY --from=build-nvidia-egl /usr/local/share/egl/egl_external_platform.d/20_nvidia_xlib.json /usr/local/share/egl/egl_external_platform.d/20_nvidia_xlib.json
+RUN ln -sf /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xcb.so.1.0.6 /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xcb.so.1 \
+ && ln -sf /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xcb.so.1 /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xcb.so \
+ && ln -sf /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xlib.so.1.0.6 /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xlib.so.1 \
+ && ln -sf /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xlib.so.1 /usr/local/lib/x86_64-linux-gnu/libnvidia-egl-xlib.so
 
-# Required for non-glvnd setups
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
-
-# Configure audio driver
+# Add audio driver configuration file
 COPY pulse-client.conf /etc/pulse/client.conf
+
+# Create passwordless user
+RUN adduser --disabled-password --gecos '' user
 
 FROM wine-base
 
