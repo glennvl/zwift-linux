@@ -88,9 +88,8 @@ ADD --checksum=sha256:${WINETRICKS_CHECKSUM} --chmod=755 https://raw.githubuserc
 # Configure nvidia driver
 ENV NVIDIA_VISIBLE_DEVICES=all
 ENV NVIDIA_DRIVER_CAPABILITIES=all
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
-RUN echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
- && echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+COPY nvidia-egl.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
+COPY nvidia-egl-xcb.json /usr/share/egl/egl_external_platform.d/20_nvidia_xcb.json
 
 # Configure audio driver
 COPY pulse-client.conf /etc/pulse/client.conf
