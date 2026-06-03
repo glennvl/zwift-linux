@@ -718,6 +718,13 @@ else
     container_args+=(--device="/dev/dri")
 fi
 
+# Container needs to known whether graphics card is nvidia to set the EGL external platform
+if [[ -f "/proc/driver/nvidia/version" ]]; then
+    container_env_vars+=(VGA_DEVICE_NVIDIA="1")
+else
+    container_env_vars+=(VGA_DEVICE_NVIDIA="0")
+fi
+
 ###########################
 ##### Start container #####
 

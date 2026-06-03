@@ -151,14 +151,19 @@ else
 fi
 
 # Check for proprietary nvidia driver and set correct device to use
+# Container needs to known whether graphics card is nvidia to set the EGL external platform
 if [[ -f "/proc/driver/nvidia/version" ]]; then
+    container_args+=(-e VGA_DEVICE_NVIDIA="1")
     if [[ ${CONTAINER_TOOL} == "podman" ]]; then
         container_args+=(--device="nvidia.com/gpu=all")
     else
         container_args+=(--gpus="all")
     fi
 else
-    container_args+=(--device="/dev/dri")
+    container_args+=(
+        -e VGA_DEVICE_NVIDIA="0"
+        --device="/dev/dri"
+    )
 fi
 
 #############################################

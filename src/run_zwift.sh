@@ -27,7 +27,6 @@ readonly ZWIFT_USERNAME="${ZWIFT_USERNAME:-}"
 readonly ZWIFT_PASSWORD="${ZWIFT_PASSWORD:-}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
-readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
 readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
@@ -104,11 +103,6 @@ zwift_args=()
 if [[ ! -d ${ZWIFT_HOME} ]] || ! cd "${ZWIFT_HOME}"; then
     msgbox error "Directory ${ZWIFT_HOME} does not exist. Has Zwift been installed?"
     exit 1
-fi
-
-if [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
-    msgbox info "Disabling EGL (using GLX instead)"
-    wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /v UseEGL /d N || return 1
 fi
 
 if [[ -n ${ZWIFT_OVERRIDE_RESOLUTION} ]]; then
