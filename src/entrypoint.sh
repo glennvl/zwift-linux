@@ -24,7 +24,9 @@ fi
 readonly VERBOSITY="${VERBOSITY:-1}"
 readonly ZWIFT_UID="${ZWIFT_UID:-$(id -u user)}"
 readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g user)}"
+readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
 readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
+readonly VGA_DEVICE_NVIDIA="${VGA_DEVICE_NVIDIA:-0}"
 readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly ZWIFT_VOLUME="${ZWIFT_VOLUME:-}"
 
@@ -52,7 +54,14 @@ msgbox() {
 # NOTE: DISPLAY must be unset here before run_zwift to work
 #       Registry entries are set in the container install or won't work.
 if [[ ${WINE_EXPERIMENTAL_WAYLAND} -eq 1 ]]; then
+    msgbox info "Enabling native Wayland"
     unset DISPLAY
+elif [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
+    msgbox info "Disabling EGL (using GLX instead)"
+    wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /f /v UseEGL /d N || return 1
+elif [[ ${VGA_DEVICE_NVIDIA} -eq 1 ]]; then
+    msgbox info "Detected nvidia graphics, configuring EGL external platform (using xcb)"
+    export __EGL_VENDOR_LIBRARY_FILENAMES="/usr/local/share/egl/egl_external_platform.d/20_nvidia_xcb.json"
 fi
 
 ############################################
