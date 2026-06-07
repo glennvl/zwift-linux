@@ -160,7 +160,7 @@ if nvidia_proprietary_driver; then
     if [[ ${CONTAINER_TOOL} == "podman" ]]; then
         container_args+=(--device="nvidia.com/gpu=all")
     else
-        container_args+=(--gpus="all")
+        container_args+=(--runtime=nvidia --gpus=all)
     fi
 else
     container_args+=(--device="/dev/dri")
