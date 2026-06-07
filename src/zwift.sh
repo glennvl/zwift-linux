@@ -681,6 +681,11 @@ fi
 ####################################
 ##### Hardware driver settings #####
 
+nvidia_proprietary_driver() {
+    local nvidia_gpus
+    command_exists nvidia-smi && nvidia_gpus="$(nvidia-smi -L)" && [[ -n ${nvidia_gpus} ]]
+}
+
 # Allow container access to d-bus
 if [[ -n ${DBUS_SESSION_BUS_ADDRESS} ]]; then
     [[ ${DBUS_SESSION_BUS_ADDRESS} =~ ^unix:path=([^,]+) ]]
@@ -710,7 +715,7 @@ if is_array "VGA_DEVICE_FLAG"; then
 elif [[ -n ${VGA_DEVICE_FLAG} ]]; then
     msgbox warning "VGA_DEVICE_FLAG is defined as a string, it is recommended to use an array"
     read -ra vga_device_flags <<< "${VGA_DEVICE_FLAG}" && container_args+=("${vga_device_flags[@]}")
-elif [[ -f "/proc/driver/nvidia/version" ]]; then
+elif nvidia_proprietary_driver; then
     if [[ ${CONTAINER_TOOL} == "podman" ]]; then
         container_args+=(--device="nvidia.com/gpu=all")
     else
@@ -718,13 +723,6 @@ elif [[ -f "/proc/driver/nvidia/version" ]]; then
     fi
 else
     container_args+=(--device="/dev/dri")
-fi
-
-# Container needs to known whether graphics card is nvidia to set the EGL external platform
-if [[ -f "/proc/driver/nvidia/version" ]]; then
-    container_env_vars+=(VGA_DEVICE_NVIDIA="1")
-else
-    container_env_vars+=(VGA_DEVICE_NVIDIA="0")
 fi
 
 ###########################
