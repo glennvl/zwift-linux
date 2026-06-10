@@ -41,7 +41,7 @@ ARG WINETRICKS_CHECKSUM=954d17f56ae5f4d32eb083193a4a838c73ae5ff6b91765d93b0eab59
 # - gosu for invoking scripts in entrypoint
 # - gpg for dearmoring winehq key
 # - gstreamer for h264 codec
-# - libegl1 and libgl1 for GL library
+# - libglvnd: libegl1 libgl1 libgles1 libgles2 libglvnd0 libglx0 libopengl0 for graphics libraries
 # - libvulkan1 for vulkan loader library
 # - mesa-utils for testing graphics: glxgears, eglgears_wayland, eglgears_x11
 # - procps for pgrep
@@ -69,10 +69,15 @@ RUN dpkg --add-architecture i386 \
         gstreamer1.0-gtk3 \
         gstreamer1.0-qt5 \
         gstreamer1.0-pulseaudio \
-        libegl1 \
         libgamemode0.i386 \
         libgamemodeauto0.i386 \
+        libegl1 \
         libgl1 \
+        libgles1 \
+        libgles2 \
+        libglvnd0 \
+        libglx0 \
+        libopengl0 \
         libvulkan1 \
         mesa-utils \
         procps \
