@@ -58,6 +58,7 @@ These environment variables can be used to alter the execution of the zwift bash
 | [`DEBUG`](#debug)                                         | `0`                        | Enable `set -x` for all scripts                     |
 | [`VERBOSITY`](#verbosity)                                 | `1`                        | Configure how much output should be shown           |
 | [`USER`](#user)                                           | `$USER`                    | Use a different user to avoid conflicts             |
+| [`ENABLE_UNSTABLE`](#enable_unstable)                     | `0`                        | Use the unstable branch version                     |
 | [`IMAGE`](#image)                                         | `docker.io/netbrain/zwift` | The image to use                                    |
 | [`VERSION`](#version)                                     | `latest`                   | The image version/tag to use                        |
 | [`SCRIPT_VERSION`](#script_version)                       | `master`                   | The `zwift.sh` script version to use                |
@@ -162,6 +163,21 @@ on a single linux user account.
 
   Running `USER="fred" zwift` will first load the `config` file and then the `fred-config` file. The values in the `fred-config`
   file will overwrite the values in the `config` file. So the zwift script will use Fred's username and password.
+
+---
+
+### `ENABLE_UNSTABLE`
+
+If set to `1`, use the unstable branch version of the zwift script and container image. Use this if you want to help testing the
+latest experimental version.
+
+| Item              | Description                            |
+|:------------------|:---------------------------------------|
+| Allowed values    | `0` - Use the latest stable release.   |
+|                   | `1` - Use the unstable branch version. |
+| Default value     | `0`                                    |
+| Commandline usage | `ENABLE_UNSTABLE="1" zwift`            |
+| Config file usage | `ENABLE_UNSTABLE="1"`                  |
 
 ---
 
