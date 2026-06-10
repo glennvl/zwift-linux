@@ -81,12 +81,16 @@ fi
 if [[ ${WINE_EXPERIMENTAL_WAYLAND} -eq 1 ]]; then
     msgbox info "Enabling native Wayland"
     unset DISPLAY
+    if nvidia_proprietary_driver; then
+        msgbox info "Detected nvidia graphics, configuring EGL external platform (wayland)"
+        export __EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json"
+    fi
 elif [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
     msgbox info "Disabling EGL (using GLX instead)"
     wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /v UseEGL /d N || return 1
 elif nvidia_proprietary_driver; then
-    msgbox info "Detected nvidia graphics, configuring EGL external platform (using xcb)"
-    export __EGL_VENDOR_LIBRARY_FILENAMES="/usr/local/share/egl/egl_external_platform.d/20_nvidia_xcb.json"
+    msgbox info "Detected nvidia graphics, configuring EGL external platform (xcb)"
+    export __EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/egl/egl_external_platform.d/20_nvidia_xcb.json"
 fi
 
 ############################################
