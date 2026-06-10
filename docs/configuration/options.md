@@ -66,7 +66,7 @@ These environment variables can be used to alter the execution of the zwift bash
 | [`DONT_CLEAN`](#dont_clean)                               | `0`                        | If set to `1`, don't clean up previous images       |
 | [`DRYRUN`](#dryrun)                                       | `0`                        | If set to `1`, only print the container run command |
 | [`INTERACTIVE`](#interactive)                             | `0`                        | If set to `1`, attach to the container terminal     |
-| [`CONTAINER_TOOL`](#container_tool)                       |                            | Defaults to podman if installed, else docker        |
+| [`CONTAINER_TOOL`](#container_tool)                       | `podman`                   | Set the container tool: `podman` or `docker`        |
 | [`CONTAINER_EXTRA_ARGS`](#container_extra_args)           |                            | Extra arguments to pass to podman/docker            |
 | [`ZWIFT_USERNAME`](#zwift_username)                       |                            | Zwift username. If set, login automatically         |
 | [`ZWIFT_PASSWORD`](#zwift_password)                       |                            | Zwift password.                                     |
@@ -79,6 +79,7 @@ These environment variables can be used to alter the execution of the zwift bash
 | [`ZWIFT_FG`](#zwift_fg)                                   | `0`                        | If set to `1`, run the container in the foreground  |
 | [`ZWIFT_NO_GAMEMODE`](#zwift_no_gamemode)                 | `0`                        | If set to `1`, don't run game mode                  |
 | [`WINE_EXPERIMENTAL_WAYLAND`](#wine_experimental_wayland) | `0`                        | If set to `1`, use native Wayland                   |
+| [`WINE_DISABLE_EGL`](#wine_disable_egl)                   | `0`                        | If set to `1`, use GLX instead of EGL               |
 | [`NETWORKING`](#networking)                               | `bridge`                   | Sets the type of container networking to use        |
 | [`ZWIFT_UID`](#zwift_uid)                                 | `$(id -u)`                 | Sets the UID that Zwift will run as                 |
 | [`ZWIFT_GID`](#zwift_gid)                                 | `$(id -g)`                 | Sets the GID that Zwift will run as                 |
@@ -327,7 +328,8 @@ Configure which container tool to use.
 |:------------------|:----------------------------------------------------|
 | Allowed values    | `podman` - Use podman as container tool.            |
 |                   | `docker` - Use docker as container tool.            |
-| Default value     | `podman` if available, otherwise fall back `docker` |
+| Default value     | `podman` - If installed.                            |
+|                   | `docker` - If podman is not installed.              |
 | Commandline usage | `CONTAINER_TOOL="docker" zwift`                     |
 | Config file usage | `CONTAINER_TOOL="docker"`                           |
 
@@ -640,6 +642,20 @@ This feature is experimental. Reduced performance and other sporadic issues are 
 
 ---
 
+### `WINE_DISABLE_EGL`
+
+If set to `1`, use GLX instead of EGL. Wine uses EGL for OpenGL by default since version 10.17.
+
+| Item              | Description                  |
+|:------------------|:-----------------------------|
+| Allowed values    | `0` - Use EGL for OpenGL.    |
+|                   | `1` - Use GLX for OpenGL.    |
+| Default value     | `0`                          |
+| Commandline usage | `WINE_DISABLE_EGL="1" zwift` |
+| Config file usage | `WINE_DISABLE_EGL="1"`       |
+
+---
+
 ### `NETWORKING`
 
 See also [Connecting Devices](../../getting-started/setup).
@@ -716,7 +732,7 @@ Override the container GPU/device flags.
 | Allowed values    | list                                                 |
 |                   | string                                               |
 | Default value     | `--device="nvidia.com/gpu=all"` - nvidia + podman    |
-|                   | `--gpus="all"` - nvidia + docker                     |
+|                   | `--runtime=nvidia --gpus=all` - nvidia + docker      |
 |                   | `--device="/dev/dri:/dev/dri"` - not nvidia          |
 | Commandline usage | `VGA_DEVICE_FLAG="--gpus=all" zwift` - Use a string. |
 | Config file usage | `VGA_DEVICE_FLAG=(--gpus=all)` - Use a list.         |

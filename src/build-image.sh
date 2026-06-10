@@ -51,6 +51,11 @@ command_exists() {
     cmd_path="$(command -v "${cmd}" 2> /dev/null)" && [[ -x ${cmd_path} ]]
 }
 
+nvidia_proprietary_driver() {
+    local nvidia_gpus
+    command_exists nvidia-smi && nvidia_gpus="$(nvidia-smi -L)" && [[ -n ${nvidia_gpus} ]]
+}
+
 echo -e "${COLOR_YELLOW}[!] ${STYLE_BOLD}Easily Zwift on linux!${RESET_STYLE}"
 echo -e "${COLOR_YELLOW}[!] ${STYLE_UNDERLINE}https://github.com/netbrain/zwift${RESET_STYLE}"
 
@@ -93,9 +98,13 @@ fi
 if [[ ${CONTAINER_TOOL} == "podman" ]]; then
     readonly BUILD_NAME="zwift"
     readonly IMAGE="localhost/zwift"
+    readonly CONTAINER_UID=1000
+    readonly CONTAINER_GID=1000
 else
     readonly BUILD_NAME="netbrain/zwift"
     readonly IMAGE="netbrain/zwift"
+    readonly CONTAINER_UID="${ZWIFT_UID}"
+    readonly CONTAINER_GID="${ZWIFT_GID}"
 fi
 msgbox info "Image will be called ${IMAGE}"
 
@@ -115,14 +124,12 @@ container_args=(
     -e VERBOSITY="${VERBOSITY}"
     -e COLORED_OUTPUT="${COLORED_OUTPUT_SUPPORTED}"
     -e CONTAINER_TOOL="${CONTAINER_TOOL}"
-    -e ZWIFT_UID="${ZWIFT_UID}"
-    -e ZWIFT_GID="${ZWIFT_GID}"
+    -e ZWIFT_UID="${CONTAINER_UID}"
+    -e ZWIFT_GID="${CONTAINER_GID}"
 )
 
 if [[ ${CONTAINER_TOOL} == "podman" ]]; then
-    # Podman maps the local user into the container as uid/gid 1000 (the container's user),
-    # consistent with zwift.sh. Using the host uid/gid here causes a uid mismatch at runtime.
-    container_args+=(--userns "keep-id:uid=1000,gid=1000")
+    container_args+=(--userns "keep-id:uid=${CONTAINER_UID},gid=${CONTAINER_GID}")
 fi
 
 # Configure window manager
@@ -132,6 +139,7 @@ if [[ -z ${DISPLAY} ]] || [[ ! -S /tmp/.X11-unix/X${DISPLAY#*:} ]]; then
     exit 1
 fi
 container_args+=(
+    --ipc=host
     -e DISPLAY="${DISPLAY}"
     -v /tmp/.X11-unix:/tmp/.X11-unix
 )
@@ -148,14 +156,14 @@ else
 fi
 
 # Check for proprietary nvidia driver and set correct device to use
-if [[ -f "/proc/driver/nvidia/version" ]]; then
+if nvidia_proprietary_driver; then
     if [[ ${CONTAINER_TOOL} == "podman" ]]; then
         container_args+=(--device="nvidia.com/gpu=all")
     else
-        container_args+=(--gpus="all")
+        container_args+=(--runtime=nvidia --gpus=all)
     fi
 else
-    container_args+=(--device="/dev/dri:/dev/dri")
+    container_args+=(--device="/dev/dri")
 fi
 
 #############################################

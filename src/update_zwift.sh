@@ -128,14 +128,7 @@ install_zwift() {
     WINEDLLOVERRIDES="mscoree,mshtml=" wineboot -u || return 1
 
     msgbox info "Installing prerequisites using winetricks"
-    winetricks -q corefonts dotnet48 d3dcompiler_47 || return 1
-
-    msgbox info "Downloading and installing webview2"
-    wget -O webview2-setup.exe https://go.microsoft.com/fwlink/p/?LinkId=2124703 || return 1
-    wine webview2-setup.exe /silent /install || return 1
-
-    msgbox info "Enabling Wayland support"
-    wine reg.exe add HKCU\\Software\\Wine\\Drivers /v Graphics /d x11,wayland || return 1
+    winetricks -q corefonts dotnet48 d3dcompiler_47 webview2 || return 1
 
     msgbox info "Downloading and installing Zwift"
     wget https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
@@ -160,7 +153,6 @@ cleanup() {
     msgbox info "Removing installation artifacts"
     # remove downloads and cache
     rm -- "${ZWIFT_HOME}/ZwiftSetup.exe" || true
-    rm -- "${ZWIFT_HOME}/webview2-setup.exe" || true
     rm -rf -- "${WINE_USER_HOME}/Downloads/Zwift" || true
     rm -rf -- "/home/user/.cache/wine*" || true
     # remove Zwift documents because it causes permission errors with podman

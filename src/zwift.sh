@@ -152,7 +152,7 @@ readonly DBUS_SESSION_BUS_ADDRESS="${DBUS_SESSION_BUS_ADDRESS:-}"
 readonly DISPLAY="${DISPLAY:-}"
 readonly WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}"
 readonly XAUTHORITY="${XAUTHORITY:-}"
-readonly XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-}"
+readonly XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/${UID}}"
 
 # Initialize user configuration environment variables
 readonly VERBOSITY="${VERBOSITY:-1}"
@@ -177,6 +177,7 @@ readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
 readonly ZWIFT_FG="${ZWIFT_FG:-0}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
 readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
+readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
 readonly NETWORKING="${NETWORKING:-bridge}"
 readonly ZWIFT_UID="${ZWIFT_UID:-${UID}}"
 readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g)}"
@@ -209,8 +210,9 @@ declare -a parameters_to_print
 parameters_to_print=(
     DEBUG VERBOSITY CONTAINER_TOOL IMAGE VERSION SCRIPT_VERSION DONT_CHECK DONT_PULL DONT_CLEAN DRYRUN INTERACTIVE
     CONTAINER_EXTRA_ARGS ZWIFT_USERNAME ZWIFT_PASSWORD ZWIFT_WORKOUT_DIR ZWIFT_ACTIVITY_DIR ZWIFT_LOG_DIR ZWIFT_SCREENSHOTS_DIR
-    ZWIFT_OVERRIDE_GRAPHICS ZWIFT_OVERRIDE_RESOLUTION ZWIFT_FG ZWIFT_NO_GAMEMODE WINE_EXPERIMENTAL_WAYLAND NETWORKING ZWIFT_UID
-    ZWIFT_GID VGA_DEVICE_FLAG PRIVILEGED_CONTAINER DBUS_SESSION_BUS_ADDRESS DISPLAY WAYLAND_DISPLAY XAUTHORITY XDG_RUNTIME_DIR
+    ZWIFT_OVERRIDE_GRAPHICS ZWIFT_OVERRIDE_RESOLUTION ZWIFT_FG ZWIFT_NO_GAMEMODE WINE_EXPERIMENTAL_WAYLAND WINE_DISABLE_EGL
+    NETWORKING ZWIFT_UID ZWIFT_GID VGA_DEVICE_FLAG PRIVILEGED_CONTAINER DBUS_SESSION_BUS_ADDRESS DISPLAY WAYLAND_DISPLAY
+    XAUTHORITY XDG_RUNTIME_DIR
 )
 for parameter_to_print in "${parameters_to_print[@]}"; do
     parameter_print_value="$(declare -p "${parameter_to_print}")"
@@ -374,6 +376,7 @@ fi
 container_env_vars+=(
     DEBUG="${DEBUG}"
     VERBOSITY="${VERBOSITY}"
+    XDG_RUNTIME_DIR="/run/user/${container_uid}"
     ZWIFT_UID="${container_uid}"
     ZWIFT_GID="${container_gid}"
     CONTAINER_TOOL="${CONTAINER_TOOL}"
@@ -491,6 +494,11 @@ else
     container_args+=(-d)
 fi
 
+# Check if EGL should be disabled
+if [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
+    container_env_vars+=(WINE_DISABLE_EGL="1")
+fi
+
 # Detect if SELinux is actively enforcing
 is_selinux_active() {
     local enforcing
@@ -582,18 +590,26 @@ fi
 # - On tty, manually starting x11 with xstart, it remains tty
 # So we cannot rely on XDG_SESSION_TYPE to detect the window manager
 
+is_wm_wayland() {
+    [[ -n ${WAYLAND_DISPLAY} ]] && [[ -S ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY} ]]
+}
+
+is_wm_xorg() {
+    [[ -n ${DISPLAY} ]] && [[ -S /tmp/.X11-unix/X${DISPLAY#*:} ]]
+}
+
 window_manager=""
 if [[ ${WINE_EXPERIMENTAL_WAYLAND} -eq 1 ]]; then
-    if [[ -n ${WAYLAND_DISPLAY} ]]; then
+    if is_wm_wayland; then
         window_manager="Wayland"
     else
         msgbox warning "WINE_EXPERIMENTAL_WAYLAND: Window manager is not Wayland, ignoring"
     fi
 fi
 if [[ -z ${window_manager} ]]; then
-    if [[ -n ${WAYLAND_DISPLAY} ]]; then
+    if is_wm_wayland; then
         window_manager="XWayland"
-    elif [[ -n ${DISPLAY} ]] && [[ -S /tmp/.X11-unix/X${DISPLAY#*:} ]]; then
+    elif is_wm_xorg; then
         window_manager="XOrg"
     else # no window manager, tty?
         msgbox error "Can't run Zwift without window manager"
@@ -603,6 +619,21 @@ fi
 
 # Setup Flags for Window Managers
 
+container_args+=(-v "${XDG_RUNTIME_DIR}:/run/user/${container_uid}")
+
+if [[ -n ${DISPLAY} ]]; then
+    container_env_vars+=(DISPLAY="${DISPLAY}")
+fi
+
+if [[ -d /tmp/.X11-unix ]]; then
+    container_args+=(-v /tmp/.X11-unix:/tmp/.X11-unix)
+fi
+
+if [[ -n ${XAUTHORITY} ]]; then
+    container_env_vars+=(XAUTHORITY="${XAUTHORITY//${local_uid}/${container_uid}}")
+    container_args+=(-v "${XAUTHORITY}:${XAUTHORITY//${local_uid}/${container_uid}}")
+fi
+
 if [[ ${window_manager} == "Wayland" ]]; then
     msgbox info "Using Wayland window manager"
 
@@ -611,42 +642,35 @@ if [[ ${window_manager} == "Wayland" ]]; then
         exit 1
     fi
 
-    if [[ -n ${XDG_RUNTIME_DIR} ]] && [[ -n ${WAYLAND_DISPLAY} ]]; then
-        container_env_vars+=(
-            XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR//${local_uid}/${container_uid}}"
-            WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
-            WINE_EXPERIMENTAL_WAYLAND="1"
-        )
-        container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${XDG_RUNTIME_DIR//${local_uid}/${container_uid}}/${WAYLAND_DISPLAY}")
-    else
-        msgbox error "Required environment variables XDG_RUNTIME_DIR and/or WAYLAND_DISPLAY are not set"
-        msgbox error "Falling back to XWayland" 5
-        window_manager="XWayland"
-    fi
+    container_env_vars+=(
+        XDG_SESSION_TYPE="wayland"
+        QT_QPA_PLATFORM="wayland"
+        GDK_BACKEND="wayland"
+        WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
+        WINE_EXPERIMENTAL_WAYLAND="1"
+    )
+
+    container_args+=(-v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/run/user/${container_uid}/${WAYLAND_DISPLAY}")
 fi
 
 xhost_access_required=0
 if [[ ${window_manager} == "XWayland" ]] || [[ ${window_manager} == "XOrg" ]]; then
     msgbox info "Using X11 window manager (${window_manager})"
 
-    if [[ -n ${DISPLAY} ]]; then
-        container_env_vars+=(DISPLAY="${DISPLAY}")
-    else
+    container_env_vars+=(XDG_SESSION_TYPE="x11")
+    container_args+=(--ipc=host)
+
+    if [[ -z ${DISPLAY} ]]; then
         msgbox error "Required environment variable DISPLAY is not set"
         exit 1
     fi
 
-    if [[ -d /tmp/.X11-unix ]]; then
-        container_args+=(-v /tmp/.X11-unix:/tmp/.X11-unix)
-    else
+    if [[ ! -d /tmp/.X11-unix ]]; then
         msgbox error "X11 socket does not exist at /tmp/.X11-unix"
         exit 1
     fi
 
-    if [[ -n ${XAUTHORITY} ]]; then
-        container_env_vars+=(XAUTHORITY="${XAUTHORITY//${local_uid}/${container_uid}}")
-        container_args+=(-v "${XAUTHORITY}:${XAUTHORITY//${local_uid}/${container_uid}}")
-    else
+    if [[ -z ${XAUTHORITY} ]]; then
         msgbox info "XAUTHORITY environment variable not set, container access to X11 needs to be granted with xhost"
         xhost_access_required=1
     fi
@@ -654,6 +678,11 @@ fi
 
 ####################################
 ##### Hardware driver settings #####
+
+nvidia_proprietary_driver() {
+    local nvidia_gpus
+    command_exists nvidia-smi && nvidia_gpus="$(nvidia-smi -L)" && [[ -n ${nvidia_gpus} ]]
+}
 
 # Allow container access to d-bus
 if [[ -n ${DBUS_SESSION_BUS_ADDRESS} ]]; then
@@ -665,12 +694,17 @@ if [[ -n ${DBUS_SESSION_BUS_ADDRESS} ]]; then
     fi
 fi
 
-# Configure sound driver
-container_env_vars+=(PULSE_SERVER="/run/user/${container_uid}/pulse/native")
-if [[ -d "/run/user/${local_uid}/pulse" ]]; then
-    container_args+=(-v "/run/user/${local_uid}/pulse:/run/user/${container_uid}/pulse")
+# Configure sound driver: PulseAudio or PipeWire
+if [[ -S "${XDG_RUNTIME_DIR}/pulse/native" ]]; then
+    msgbox info "Using PulseAudio sound driver"
+    container_env_vars+=(PULSE_SERVER="/run/user/${container_uid}/pulse/native")
+    container_args+=(-v "${XDG_RUNTIME_DIR}/pulse:/run/user/${container_uid}/pulse")
+elif [[ -S "${XDG_RUNTIME_DIR}/pipewire-0" ]]; then
+    msgbox info "Using PipeWire sound driver"
+    container_env_vars+=(PIPEWIRE_RUNTIME_DIR="/run/user/${container_uid}")
+    container_args+=(-v "${XDG_RUNTIME_DIR}/pipewire-0:/run/user/${container_uid}/pipewire-0")
 else
-    msgbox warning "PulseAudio socket /run/user/${local_uid}/pulse not found — audio may not work (PipeWire-only system?)"
+    msgbox warning "No sound driver detected"
 fi
 
 # Check for proprietary nvidia driver and set correct device to use (respects existing VGA_DEVICE_FLAG)
@@ -679,14 +713,14 @@ if is_array "VGA_DEVICE_FLAG"; then
 elif [[ -n ${VGA_DEVICE_FLAG} ]]; then
     msgbox warning "VGA_DEVICE_FLAG is defined as a string, it is recommended to use an array"
     read -ra vga_device_flags <<< "${VGA_DEVICE_FLAG}" && container_args+=("${vga_device_flags[@]}")
-elif [[ -f "/proc/driver/nvidia/version" ]]; then
+elif nvidia_proprietary_driver; then
     if [[ ${CONTAINER_TOOL} == "podman" ]]; then
         container_args+=(--device="nvidia.com/gpu=all")
     else
-        container_args+=(--gpus="all")
+        container_args+=(--runtime=nvidia --gpus=all)
     fi
 else
-    container_args+=(--device="/dev/dri:/dev/dri")
+    container_args+=(--device="/dev/dri")
 fi
 
 ###########################
