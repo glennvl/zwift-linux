@@ -142,7 +142,7 @@ fi
 
 if [[ -n ${ZWIFT_USERNAME} ]] && [[ -n ${ZWIFT_PASSWORD} ]]; then
     msgbox info "Authenticating with Zwift"
-    if auth_token="$(zwift-auth)"; then
+    if auth_token="$(/opt/netbrain/zwift/authenticate.sh)"; then
         zwift_args+=(--token="${auth_token}")
     else
         msgbox warning "Authentication failed, manual login will be required"
@@ -191,7 +191,7 @@ msgbox ok "Zwift launcher started using wine"
 msgbox info "Starting Zwift using wine"
 
 declare -a zwift_cmd
-zwift_cmd=(wine start /d "${zwift_wine_dir}" /unix /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
+zwift_cmd=(wine start /d "${zwift_wine_dir}" /unix /opt/run-from.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
 
 if [[ ${ZWIFT_NO_GAMEMODE} -eq 1 ]]; then
     msgbox info "Not using gamemode"
