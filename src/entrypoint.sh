@@ -21,6 +21,9 @@ else
     readonly RESET_STYLE=""
 fi
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+readonly SCRIPT_DIR
+
 readonly VERBOSITY="${VERBOSITY:-1}"
 readonly ZWIFT_UID="${ZWIFT_UID:-$(id -u user)}"
 readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g user)}"
@@ -63,9 +66,9 @@ msgbox debug "Entrypoint script invoked with arguments: ${*:-none}"
 declare -a startup_cmd
 
 if [[ ${1:-} == "--install" ]] || [[ ${1:-} == "--update" ]]; then
-    startup_cmd=(/bin/update_zwift.sh "${1:-}")
+    startup_cmd=("${SCRIPT_DIR}/update.sh" "${1:-}")
 else
-    startup_cmd=(/bin/run_zwift.sh)
+    startup_cmd=("${SCRIPT_DIR}/launch.sh")
 fi
 
 ######################################
