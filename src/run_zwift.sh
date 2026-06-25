@@ -184,7 +184,7 @@ if ! "${zwift_cmd[@]}" || ! wait_until_wine_task_started ZwiftApp.exe; then
 fi
 
 msgbox info "Killing Zwift launcher and background tasks"
-kill_wine_tasks ZwiftLauncher.exe ZwiftWindowsCrashHandler.exe MicrosoftEdgeUpdate.exe
+kill_wine_tasks ZwiftLauncher.exe ZwiftWindowsCrashHandler.exe
 
 msgbox ok "Zwift started using wine"
 
