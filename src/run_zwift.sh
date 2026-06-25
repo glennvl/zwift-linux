@@ -26,6 +26,7 @@ readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly ZWIFT_USERNAME="${ZWIFT_USERNAME:-}"
 readonly ZWIFT_PASSWORD="${ZWIFT_PASSWORD:-}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
+readonly ZWIFT_FPS_LIMIT="${ZWIFT_FPS_LIMIT:-}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
@@ -168,17 +169,30 @@ fi
 msgbox ok "Zwift launcher started using wine"
 msgbox info "Starting Zwift using wine"
 
-declare -a zwift_cmd
+declare -a launcher_cmd
+launcher_cmd=()
+declare -a wine_extra_args
+wine_extra_args=()
+declare -a wine_cmd
+wine_cmd=(/bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
 
 if [[ ${ZWIFT_NO_GAMEMODE} -eq 1 ]]; then
     msgbox info "Not using gamemode"
-    zwift_cmd=(wine start /exec /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
+    wine_extra_args+=(start /exec)
 else
     msgbox info "Using gamemode"
-    zwift_cmd=(/usr/games/gamemoderun wine /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
+    launcher_cmd+=(/usr/games/gamemoderun)
 fi
 
-if ! "${zwift_cmd[@]}" || ! wait_until_wine_task_started ZwiftApp.exe; then
+if [[ -n ${ZWIFT_FPS_LIMIT} ]]; then
+    msgbox info "Limiting Zwift fps to ${ZWIFT_FPS_LIMIT}"
+    launcher_cmd+=(strangle "${ZWIFT_FPS_LIMIT}")
+fi
+
+declare -a launch_zwift_cmd
+launch_zwift_cmd=("${launcher_cmd[@]}" wine "${wine_extra_args[@]}" "${wine_cmd[@]}")
+
+if ! "${launch_zwift_cmd[@]}" || ! wait_until_wine_task_started ZwiftApp.exe; then
     msgbox error "Failed to start Zwift using wine!"
     exit 1
 fi
