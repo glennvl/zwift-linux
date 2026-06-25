@@ -21,6 +21,9 @@ else
     readonly RESET_STYLE=""
 fi
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+readonly SCRIPT_DIR
+
 readonly VERBOSITY="${VERBOSITY:-1}"
 readonly ZWIFT_UID="${ZWIFT_UID:-$(id -u user)}"
 readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g user)}"
@@ -77,14 +80,14 @@ fi
 ##### Clean install, update or launch? #####
 
 declare -a startup_cmd
-startup_cmd=(/bin/run_zwift.sh)
+startup_cmd=("${SCRIPT_DIR}/launch.sh")
 update_required=0
 
 if is_empty_directory "${ZWIFT_HOME}"; then
-    startup_cmd=(/bin/update_zwift.sh --install)
+    startup_cmd=("${SCRIPT_DIR}/update.sh" --install)
     update_required=1
 elif [[ ${1:-} == "--update" ]]; then
-    startup_cmd=(/bin/update_zwift.sh)
+    startup_cmd=("${SCRIPT_DIR}/update.sh")
     update_required=1
 fi
 
