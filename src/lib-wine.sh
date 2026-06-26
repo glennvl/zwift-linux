@@ -1,5 +1,4 @@
 # shellcheck shell=bash
-set -uo pipefail
 
 wine_task_info() {
     local task_name="${1:?}"
@@ -8,12 +7,14 @@ wine_task_info() {
 
 wine_task_pid() {
     local task_name="${1:?}"
-    wine_task_info "${task_name}" | grep -m1 -Po '^PID:[\t ]*\K[0-9]+'
+    local task_info
+    task_info="$(wine_task_info "${task_name}")" && grep -m1 -Po '^PID:[\t ]*\K[0-9]+' <<< "${task_info}"
 }
 
 is_wine_task_running() {
     local task_name="${1:?}"
-    [[ -n $(wine_task_info "${task_name}" || true) ]]
+    local task_info
+    task_info="$(wine_task_info "${task_name}")" && [[ -n ${task_info} ]]
 }
 
 kill_wine_tasks() {
