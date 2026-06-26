@@ -1,55 +1,18 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-readonly DEBUG="${DEBUG:-0}"
-if [[ ${DEBUG} -eq 1 ]]; then set -x; fi
-
-readonly COLORED_OUTPUT="${COLORED_OUTPUT:-0}"
-if [[ -t 1 ]] || [[ ${COLORED_OUTPUT} -eq 1 ]]; then
-    readonly COLOR_WHITE="\033[0;37m"
-    readonly COLOR_RED="\033[0;31m"
-    readonly COLOR_GREEN="\033[0;32m"
-    readonly COLOR_BLUE="\033[0;34m"
-    readonly COLOR_YELLOW="\033[0;33m"
-    readonly RESET_STYLE="\033[0m"
-else
-    readonly COLOR_WHITE=""
-    readonly COLOR_RED=""
-    readonly COLOR_GREEN=""
-    readonly COLOR_BLUE=""
-    readonly COLOR_YELLOW=""
-    readonly RESET_STYLE=""
-fi
-
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 readonly SCRIPT_DIR
 
-readonly VERBOSITY="${VERBOSITY:-1}"
+source "${SCRIPT_DIR}/lib-logging.sh"
+
 readonly ZWIFT_UID="${ZWIFT_UID:-$(id -u user)}"
 readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g user)}"
 readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
-readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
 readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
-
-msgbox() {
-    local type="${1:?}" # Type: info, ok, warning, error, debug
-    local msg="${2:?}"  # Message: the message to display
-
-    local timestamp=""
-    [[ ${VERBOSITY} -ge 2 ]] && printf -v timestamp '%(%T)T|' -1
-
-    case ${type} in
-        info) [[ ${VERBOSITY} -ge 1 ]] && echo -e "${COLOR_BLUE}[${CONTAINER_TOOL}|${timestamp}*] ${msg}${RESET_STYLE}" ;;
-        ok) echo -e "${COLOR_GREEN}[${CONTAINER_TOOL}|${timestamp}✓] ${msg}${RESET_STYLE}" ;;
-        warning) echo -e "${COLOR_YELLOW}[${CONTAINER_TOOL}|${timestamp}!] ${msg}${RESET_STYLE}" ;;
-        error) echo -e "${COLOR_RED}[${CONTAINER_TOOL}|${timestamp}✗] ${msg}${RESET_STYLE}" >&2 ;;
-        debug) [[ ${VERBOSITY} -ge 3 ]] && echo -e "${COLOR_WHITE}[${CONTAINER_TOOL}|${timestamp}◉] ${msg}${RESET_STYLE}" ;;
-        *) echo "msgbox - unknown type ${type}" >&2 && exit 1 ;;
-    esac
-}
 
 is_empty_directory() {
     local directory="${1:?}"

@@ -30,6 +30,7 @@ jobs:
         files_map["/opt/netbrain/zwift/authenticate.sh"]="src/authenticate.sh"
         files_map["/opt/netbrain/zwift/update.sh"]="src/update.sh"
         files_map["/opt/netbrain/zwift/launch.sh"]="src/launch.sh"
+        files_map["/opt/netbrain/zwift/lib-logging.sh"]="src/lib-logging.sh"
 
         has_changes=0
         for container_path in "${!files_map[@]}"; do

@@ -101,7 +101,7 @@ LABEL org.opencontainers.image.title="netbrain/zwift"
 LABEL org.opencontainers.image.description="Easily zwift on linux"
 LABEL org.opencontainers.image.url="https://github.com/netbrain/zwift"
 
-COPY --chmod=755 authenticate.sh entrypoint.sh launch.sh update.sh /opt/netbrain/zwift/
+COPY --chmod=755 authenticate.sh entrypoint.sh launch.sh update.sh lib-*.sh /opt/netbrain/zwift/
 COPY --from=build-runfromprocess /usr/src/target/x86_64-pc-windows-gnu/release/runfromprocess-rs.exe /opt/run-from.exe
 
 ENTRYPOINT ["/opt/netbrain/zwift/entrypoint.sh"]
