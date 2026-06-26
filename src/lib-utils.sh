@@ -1,5 +1,4 @@
 # shellcheck shell=bash
-set -uo pipefail
 
 wait_until() {
     local condition="${1:?}"
