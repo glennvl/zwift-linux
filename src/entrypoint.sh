@@ -34,8 +34,6 @@ fi
 ##### Clean install, update or launch? #####
 
 declare -a startup_cmd
-startup_cmd=("${SCRIPT_DIR}/launch.sh")
-update_required=0
 
 if is_empty_directory "${ZWIFT_HOME}"; then
     startup_cmd=("${SCRIPT_DIR}/update.sh" --install)
@@ -43,6 +41,9 @@ if is_empty_directory "${ZWIFT_HOME}"; then
 elif [[ ${1:-} == "--update" ]]; then
     startup_cmd=("${SCRIPT_DIR}/update.sh")
     update_required=1
+else
+    startup_cmd=("${SCRIPT_DIR}/launch.sh")
+    update_required=0
 fi
 
 ######################################
