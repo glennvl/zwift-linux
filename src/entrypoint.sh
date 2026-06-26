@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)
 readonly SCRIPT_DIR
 
 source "${SCRIPT_DIR}/lib-logging.sh"
+source "${SCRIPT_DIR}/lib-utils.sh"
 
 readonly ZWIFT_UID="${ZWIFT_UID:-$(id -u user)}"
 readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g user)}"
@@ -13,16 +14,6 @@ readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
 readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
-
-is_empty_directory() {
-    local directory="${1:?}"
-    if [[ ! -d ${directory} ]]; then
-        msgbox error "${directory} is not a directory"
-        exit 1
-    fi
-    local contents
-    ! contents="$(ls -A "${directory}" 2> /dev/null)" || [[ -z ${contents} ]]
-}
 
 ###########################
 ##### Configure Zwift #####
