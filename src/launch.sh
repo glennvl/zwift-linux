@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)
 readonly SCRIPT_DIR
 
 source "${SCRIPT_DIR}/lib-logging.sh"
+source "${SCRIPT_DIR}/lib-utils.sh"
 source "${SCRIPT_DIR}/lib-wine.sh"
 
 readonly ZWIFT_USERNAME="${ZWIFT_USERNAME:-}"
