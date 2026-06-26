@@ -5,20 +5,11 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)
 readonly SCRIPT_DIR
 
 source "${SCRIPT_DIR}/lib-logging.sh"
+source "${SCRIPT_DIR}/lib-wine.sh"
 
 readonly WINE_USER_HOME="/home/user/.wine/drive_c/users/user"
 readonly ZWIFT_HOME="/home/user/.wine/drive_c/Program Files (x86)/Zwift"
 readonly ZWIFT_DOCS="${WINE_USER_HOME}/AppData/Local/Zwift"
-
-wine_task_info() {
-    local task_name="${1:?}"
-    wine tasklist /fo list /fi "IMAGENAME eq ${task_name}"
-}
-
-is_wine_task_running() {
-    local task_name="${1:?}"
-    [[ -n $(wine_task_info "${task_name}" || true) ]]
-}
 
 get_current_version() {
     # if Zwift_ver_cur_filename.txt exists, it holds the true current version filename
