@@ -100,6 +100,7 @@ SCRIPTS_MAP["/opt/netbrain/zwift/authenticate.sh"]="${SCRIPT_DIR}/authenticate.s
 SCRIPTS_MAP["/opt/netbrain/zwift/update.sh"]="${SCRIPT_DIR}/update.sh"
 SCRIPTS_MAP["/opt/netbrain/zwift/launch.sh"]="${SCRIPT_DIR}/launch.sh"
 SCRIPTS_MAP["/opt/netbrain/zwift/lib-logging.sh"]="${SCRIPT_DIR}/lib-logging.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/lib-utils.sh"]="${SCRIPT_DIR}/lib-utils.sh"
 SCRIPTS_MAP["/opt/netbrain/zwift/lib-wine.sh"]="${SCRIPT_DIR}/lib-wine.sh"
 readonly SCRIPTS_MAP
 
