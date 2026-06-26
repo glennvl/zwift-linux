@@ -31,6 +31,7 @@ jobs:
         files_map["/opt/netbrain/zwift/update.sh"]="src/update.sh"
         files_map["/opt/netbrain/zwift/launch.sh"]="src/launch.sh"
         files_map["/opt/netbrain/zwift/lib-logging.sh"]="src/lib-logging.sh"
+        files_map["/opt/netbrain/zwift/lib-utils.sh"]="src/lib-utils.sh"
         files_map["/opt/netbrain/zwift/lib-wine.sh"]="src/lib-wine.sh"
 
         has_changes=0
