@@ -95,10 +95,13 @@ readonly TEMP_CONTAINER_NAME="zwift-update-image"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
 readonly SCRIPT_DIR
 declare -A SCRIPTS_MAP
-SCRIPTS_MAP["/bin/entrypoint"]="${SCRIPT_DIR}/entrypoint.sh"
-SCRIPTS_MAP["/bin/zwift-auth"]="${SCRIPT_DIR}/zwift-auth.sh"
-SCRIPTS_MAP["/bin/update_zwift.sh"]="${SCRIPT_DIR}/update_zwift.sh"
-SCRIPTS_MAP["/bin/run_zwift.sh"]="${SCRIPT_DIR}/run_zwift.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/entrypoint.sh"]="${SCRIPT_DIR}/entrypoint.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/authenticate.sh"]="${SCRIPT_DIR}/authenticate.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/update.sh"]="${SCRIPT_DIR}/update.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/launch.sh"]="${SCRIPT_DIR}/launch.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/lib-logging.sh"]="${SCRIPT_DIR}/lib-logging.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/lib-utils.sh"]="${SCRIPT_DIR}/lib-utils.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/lib-wine.sh"]="${SCRIPT_DIR}/lib-wine.sh"
 readonly SCRIPTS_MAP
 
 ###################################
@@ -149,9 +152,15 @@ fi
 for container_path in "${!SCRIPTS_MAP[@]}"; do
     msgbox info "Checking if ${container_path} is up-to-date"
     host_path="${SCRIPTS_MAP[${container_path}]}"
-    if ! ${CONTAINER_TOOL} cp "${TEMP_CONTAINER_NAME}:${container_path}" "${temp_dir}/container_script"; then
-        msgbox error "Failed to copy ${container_path} from container to host"
-        exit 1
+    if ! ${CONTAINER_TOOL} cp "${TEMP_CONTAINER_NAME}:${container_path}" "${temp_dir}/container_script" 1> /dev/null 2>&1; then
+        msgbox info "${container_path} does not yet exist in the container"
+        if ! ${CONTAINER_TOOL} cp "${host_path}" "${TEMP_CONTAINER_NAME}:${container_path}"; then
+            msgbox error "Failed to copy ${host_path} to ${container_path} in temporary container"
+            exit 1
+        fi
+        msgbox ok "Copied ${host_path} to ${container_path} in temporary container"
+        any_script_updated=1
+        continue
     fi
     container_sum="$(sha256sum "${temp_dir}/container_script" | awk '{print $1}')"
     host_sum="$(sha256sum "${host_path}" | awk '{print $1}')"
@@ -162,12 +171,11 @@ for container_path in "${!SCRIPTS_MAP[@]}"; do
         continue
     fi
     msgbox info "${container_path} is not up-to-date, updating script in container"
-    if ${CONTAINER_TOOL} cp "${host_path}" "${TEMP_CONTAINER_NAME}:${container_path}"; then
-        msgbox ok "Copied ${host_path} to ${container_path} in temporary container"
-    else
-        msgbox info "Failed to copy ${host_path} to ${container_path} in temporary container"
+    if ! ${CONTAINER_TOOL} cp "${host_path}" "${TEMP_CONTAINER_NAME}:${container_path}"; then
+        msgbox error "Failed to copy ${host_path} to ${container_path} in temporary container"
         exit 1
     fi
+    msgbox ok "Copied ${host_path} to ${container_path} in temporary container"
     any_script_updated=1
 done
 
