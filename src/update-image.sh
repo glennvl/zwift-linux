@@ -99,6 +99,7 @@ SCRIPTS_MAP["/opt/netbrain/zwift/entrypoint.sh"]="${SCRIPT_DIR}/entrypoint.sh"
 SCRIPTS_MAP["/opt/netbrain/zwift/authenticate.sh"]="${SCRIPT_DIR}/authenticate.sh"
 SCRIPTS_MAP["/opt/netbrain/zwift/update.sh"]="${SCRIPT_DIR}/update.sh"
 SCRIPTS_MAP["/opt/netbrain/zwift/launch.sh"]="${SCRIPT_DIR}/launch.sh"
+SCRIPTS_MAP["/opt/netbrain/zwift/lib-logging.sh"]="${SCRIPT_DIR}/lib-logging.sh"
 readonly SCRIPTS_MAP
 
 ###################################
