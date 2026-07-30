@@ -102,7 +102,9 @@ RUN mkdir -p /etc/apt/keyrings \
 # Download winetricks
 ADD --checksum=sha256:${WINETRICKS_CHECKSUM} --chmod=755 https://raw.githubusercontent.com/Winetricks/winetricks/${WINETRICKS_VERSION}/src/winetricks /usr/local/bin/
 
-# Add nvidia egl external platform configuration files
+# Configure nvidia driver
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=all
 COPY nvidia-egl.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
 COPY nvidia-egl-xcb.json /usr/share/egl/egl_external_platform.d/20_nvidia_xcb.json
 
@@ -114,8 +116,6 @@ RUN adduser --disabled-password --gecos '' user
 
 FROM wine-base
 
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=all
 ENV WINEDEBUG=fixme-all
 ENV WINE_PREFIX="/home/user/.wine"
 ENV WINE_USER_HOME="${WINE_PREFIX}/drive_c/users/user"
