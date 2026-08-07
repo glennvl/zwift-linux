@@ -112,7 +112,7 @@ COPY nvidia-egl-xcb.json /usr/share/egl/egl_external_platform.d/20_nvidia_xcb.js
 COPY pulse-client.conf /etc/pulse/client.conf
 
 # Create passwordless user
-RUN adduser --disabled-password --gecos '' user
+RUN useradd --create-home --shell /bin/bash user
 
 FROM wine-base
 
