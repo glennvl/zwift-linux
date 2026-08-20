@@ -81,7 +81,7 @@ jobs:
     - name: Checkout repository code
       uses: actions/checkout@v6
     - name: Spellcheck markdown files
-      uses: streetsidesoftware/cspell-action@v8
+      uses: streetsidesoftware/cspell-action@v9
       with:
         config: .cspell.yaml
         suggestions: true
