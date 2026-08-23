@@ -8,6 +8,7 @@
       "moby": false
     },
     "ghcr.io/devcontainers/features/ruby": {},
+    "ghcr.io/devcontainers/features/go": {},
     "ghcr.io/devcontainers/features/node": {},
     "ghcr.io/devcontainers/features/nix": {
       "packages": "nil,nixfmt",
@@ -22,6 +23,7 @@
   "overrideFeatureInstallOrder": [
     "ghcr.io/devcontainers/features/docker-in-docker",
     "ghcr.io/devcontainers/features/ruby",
+    "ghcr.io/devcontainers/features/go",
     "ghcr.io/devcontainers/features/node",
     "ghcr.io/devcontainers/features/nix",
     "ghcr.io/devcontainers-extra/features/actionlint",
