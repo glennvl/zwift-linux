@@ -82,3 +82,7 @@ The devcontainer includes:
 - Nix with `nil` language server
 - shellcheck and hadolint
 - VS Code extensions for real-time linting feedback
+
+{: .note }
+> When rebuilding the container, the old nix store volume needs to be removed first. Use `docker volume ls` to get the exact
+> name and `docker volume rm` to remove it.
