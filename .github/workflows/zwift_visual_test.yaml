@@ -1,0 +1,37 @@
+---
+name: Zwift visual test
+'on':
+  pull_request:
+  push:
+    branches:
+    - master
+  workflow_dispatch:
+jobs:
+  zwift_visual_test:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: Install dependencies
+      run: sudo apt-get install -y x11-xserver-utils x11-apps imagemagick
+    - uses: netbrain/free-disk-space-action@v0.0.1
+    - name: Start Zwift and capture screenshot
+      run: |
+        export DISPLAY=":99"
+        Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
+        sleep 3
+        xhost+
+        docker run \
+            --rm \
+            --name zwift-visual-test \
+            -e DISPLAY="${DISPLAY}" \
+            -e CONTAINER_TOOL="docker" \
+            --device="/dev/dri:/dev/dri" \
+            -v /tmp/.X11-unix:/tmp/.X11-unix \
+            netbrain/zwift:latest
+        sleep 5
+        import -window root zwift-screenshot.png
+        docker kill zwift-visual-test
+    - name: Upload screenshot
+      uses: actions/upload-artifact@v7
+      with:
+        path: zwift-screenshot.png
+        archive: false
