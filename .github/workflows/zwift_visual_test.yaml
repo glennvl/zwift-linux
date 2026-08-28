@@ -25,6 +25,7 @@ jobs:
             --name zwift-visual-test \
             -e DISPLAY="${DISPLAY}" \
             -e CONTAINER_TOOL="docker" \
+            -e ZWIFT_NO_GAMEMODE="1" \
             --device="/dev/dri:/dev/dri" \
             -v /tmp/.X11-unix:/tmp/.X11-unix \
             netbrain/zwift:latest
