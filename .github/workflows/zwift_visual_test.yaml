@@ -44,7 +44,7 @@ jobs:
             screenshot-normalized.png \
             screenshot-diff.png \
             2>&1 \
-        )" || [[ ${different_pixels} != "0 (0)" ]]; then
+        )" || [[ ${different_pixels} != "0" ]]; then
             echo "::error::Zwift screenshot differs from reference image! (pixel difference = ${different_pixels})"
             exit 1
         fi
