@@ -21,6 +21,7 @@ jobs:
         xhost +
         docker run \
             --rm \
+            -d \
             --name zwift-visual-test \
             -e DISPLAY="${DISPLAY}" \
             -e CONTAINER_TOOL="docker" \
