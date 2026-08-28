@@ -32,12 +32,12 @@ jobs:
             -v /tmp/.X11-unix:/tmp/.X11-unix \
             netbrain/zwift:latest
         sleep 30
-        magick import -window root zwift-screenshot.png
+        import -window root zwift-screenshot.png
         docker kill zwift-visual-test
     - name: Compare to reference screenshot
       run: |
-        magick tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' zwift-screenshot-mask.png
-        different_pixels="$(magick compare -metric AE -read-mask zwift-screenshot-mask.png tests/zwift-visual-test/reference-screenshot.png zwift-screenshot.png zwift-screenshot-diff.png)"
+        convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' zwift-screenshot-mask.png
+        different_pixels="$(compare -metric AE -read-mask zwift-screenshot-mask.png tests/zwift-visual-test/reference-screenshot.png zwift-screenshot.png zwift-screenshot-diff.png)"
         if [[ ${different_pixels} != "0 (0)" ]]; then
             echo "::error::Zwift screenshot differs from reference image!"
             exit 1
