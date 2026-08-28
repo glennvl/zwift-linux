@@ -18,7 +18,7 @@ jobs:
         export DISPLAY=":99"
         Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
         sleep 3
-        xhost+
+        xhost +
         docker run \
             --rm \
             --name zwift-visual-test \
