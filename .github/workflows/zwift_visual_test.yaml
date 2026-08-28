@@ -39,13 +39,13 @@ jobs:
         convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' reference-normalized.png
         convert zwift-screenshot.png -draw 'rectangle 175,430 625,455' screenshot-normalized.png
         if ! different_pixels="$(compare \
-            -metric PDC
+            -metric AE
             reference-normalized.png \
             screenshot-normalized.png \
             screenshot-diff.png \
             2>&1 \
         )" || [[ ${different_pixels} != "0 (0)" ]]; then
-            echo "::error::Zwift screenshot differs from reference image! (# different pixels = ${different_pixels})"
+            echo "::error::Zwift screenshot differs from reference image! (pixel difference = ${different_pixels})"
             exit 1
         fi
     - name: Upload screenshot
