@@ -37,7 +37,13 @@ jobs:
     - name: Compare to reference screenshot
       run: |
         convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' zwift-screenshot-mask.png
-        different_pixels="$(compare -metric AE -read-mask zwift-screenshot-mask.png tests/zwift-visual-test/reference-screenshot.png zwift-screenshot.png zwift-screenshot-diff.png)"
+        different_pixels="$(compare \
+            -metric AE \
+            -read-mask zwift-screenshot-mask.png \
+            tests/zwift-visual-test/reference-screenshot.png \
+            zwift-screenshot.png \
+            zwift-screenshot-diff.png \
+        )"
         if [[ ${different_pixels} != "0 (0)" ]]; then
             echo "::error::Zwift screenshot differs from reference image!"
             exit 1
