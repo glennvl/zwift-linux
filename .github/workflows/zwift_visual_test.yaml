@@ -39,7 +39,7 @@ jobs:
         convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' reference-normalized.png
         convert zwift-screenshot.png -draw 'rectangle 175,430 625,455' screenshot-normalized.png
         if ! different_pixels="$(compare \
-            -metric AE
+            -metric AE \
             reference-normalized.png \
             screenshot-normalized.png \
             screenshot-diff.png \
