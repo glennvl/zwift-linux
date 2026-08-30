@@ -1,0 +1,129 @@
+---
+name: Build zwift image
+'on':
+  workflow_call:
+    inputs:
+      repository:
+        description: image repository
+        required: true
+        type: string
+      registry:
+        description: container registry
+        default: ghcr.io
+        required: false
+        type: string
+      username:
+        description: username for container registry
+        required: true
+        type: string
+      rebuild:
+        description: rebuild the image even if not needed
+        default: false
+        required: false
+        type: boolean
+    outputs:
+      commit:
+        description: commit from which image is built
+        value: ${{ jobs.build.outputs.commit }}
+      image:
+        description: zwift image
+        value: ${{ jobs.build.outputs.image }}
+      rebuild:
+        description: was the image rebuilt
+        value: ${{ jobs.build.outputs.rebuild }}
+      version:
+        description: bundled zwift version
+        value: ${{ jobs.build.outputs.version }}
+    secrets:
+      token:
+        description: access token for container registry
+        required: true
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    outputs:
+      commit: ${{ steps.metadata.outputs.commmit }}
+      image: ${{ steps.metadata.outputs.image }}
+      version: ${{ steps.metadata.outputs.version }}
+      rebuild: ${{ steps.build_required.outputs.rebuild }}
+    steps:
+    - name: Login to Container Registry
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ secrets.token }}
+    - name: Install dependencies
+      run: sudo apt-get install -y x11-xserver-utils x11-apps
+    - uses: netbrain/free-disk-space-action@v0.0.1
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Gather metadata
+      id: metadata
+      env:
+        REGISTRY: ${{ inputs.registry }}
+        USERNAME: ${{ inputs.username }}
+        REPO: ${{ inputs.repository }}
+        ZWIFT_VERSION_URL: https://cdn.zwift.com/gameassets/Zwift_Updates_Root/Zwift_ver_cur.xml
+      run: |
+        commit="$(git rev-parse --short HEAD)"
+        version="$(curl -s "${ZWIFT_VERSION_URL}" | grep -oP 'sversion="\K.*?(?=")' | cut -f 1 -d ' ')"
+        image="${REGISTRY}/${USERNAME@L}/$(basename "${REPO@L}"):${version}_${commit}"
+
+        echo "Zwift version: ${version}"
+        echo "Commit hash:   ${commit}"
+
+        (
+            echo "commit=${commit}"
+            echo "image=${image}"
+            echo "version=${version}"
+        ) >> "${GITHUB_OUTPUT}"
+    - name: Check build required
+      id: build_required
+      env:
+        IMAGE: ${{ steps.metadata.outputs.image }}
+        REPO: ${{ inputs.repository }}
+      run: |
+        rebuild=0
+        if docker manifest inspect "${IMAGE}" > /dev/null 2>&1; then
+            echo "${REPO} is already up-to-date"
+        else
+            rebuild=1
+        fi
+        echo "rebuild=${rebuild}" >> "${GITHUB_OUTPUT}"
+    - name: Build image
+      if: inputs.rebuild || steps.build_required.outputs.rebuild
+      env:
+        COMMIT: ${{ steps.metadata.outputs.commit }}
+        IMAGE: ${{ steps.metadata.outputs.image }}
+        VERSION: ${{ steps.metadata.outputs.version }}
+        REPO: ${{ inputs.repository }}
+      run: |
+        build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+        export DISPLAY=":99"
+        Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
+        sleep 3
+
+        docker build -t "${REPO@L}:build" src/
+
+        xhost +
+
+        docker run \
+            --name zwift-build \
+            -e DISPLAY="${DISPLAY}" \
+            -e CONTAINER_TOOL="docker" \
+            --device="/dev/dri" \
+            -v /tmp/.X11-unix:/tmp/.X11-unix \
+            "${REPO@L}:build" \
+            --install
+        docker commit \
+            --change="LABEL org.opencontainers.image.created=${build_date}" \
+            --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
+            --change="LABEL org.opencontainers.image.version=${VERSION}" \
+            --change='CMD [""]' \
+            -m "build from zwift ${VERSION} and commit ${COMMIT}" \
+            zwift-build \
+            "${IMAGE}"
+        docker push "${IMAGE}"
