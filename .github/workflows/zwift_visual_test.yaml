@@ -1,13 +1,14 @@
 ---
 name: Zwift visual test
 'on':
-  pull_request:
-  push:
-    branches:
-    - master
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      image:
+        description: zwift image to test
+        required: true
+        type: string
 jobs:
-  zwift_visual_test:
+  test:
     runs-on: ubuntu-22.04
     steps:
     - name: Install dependencies
@@ -16,6 +17,8 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
     - name: Start Zwift and capture screenshot
+      env:
+        IMAGE: ${{ inputs.image }}
       run: |
         export DISPLAY=":99"
         Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
@@ -28,9 +31,9 @@ jobs:
             -e DISPLAY="${DISPLAY}" \
             -e CONTAINER_TOOL="docker" \
             -e ZWIFT_NO_GAMEMODE="1" \
-            --device="/dev/dri:/dev/dri" \
+            --device="/dev/dri" \
             -v /tmp/.X11-unix:/tmp/.X11-unix \
-            netbrain/zwift:latest
+            "${IMAGE}"
         sleep 30
         import -window root zwift-screenshot.png
         docker kill zwift-visual-test
