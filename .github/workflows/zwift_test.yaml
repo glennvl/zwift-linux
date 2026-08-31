@@ -7,6 +7,7 @@ concurrency:
   group: zwift-container-image
 jobs:
   build:
+    name: Build container image
     uses: ./.github/workflows/zwift_build_if_needed.yaml
     with:
       repository: ${{ github.repository }}
@@ -14,6 +15,7 @@ jobs:
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
   test:
+    name: Test container image
     needs: build
     uses: ./.github/workflows/zwift_visual_test.yaml
     with:
