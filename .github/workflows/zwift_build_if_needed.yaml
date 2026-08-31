@@ -86,6 +86,7 @@ jobs:
     - name: Check build required
       id: build_required
       env:
+        COMMIT: ${{ steps.metadata.outputs.commit }}
         DOCKERFILE: ${{ steps.metadata.outputs.dockerfile }}
         IMAGE: ${{ steps.metadata.outputs.image }}
         TAG: ${{ steps.metadata.outputs.tag }}
@@ -99,8 +100,8 @@ jobs:
 
         if docker manifest inspect "${IMAGE}:${TAG}" > /dev/null 2>&1; then
             echo "${REPO} is already up-to-date"
-        elif docker pull "${IMAGE}:${commit}" > /dev/null 2>&1; then
-            base_image="${IMAGE}:${commit}"
+        elif docker pull "${IMAGE}:${COMMIT}" > /dev/null 2>&1; then
+            base_image="${IMAGE}:${COMMIT}"
             update_zwift=1
         elif docker pull netbrain/zwift:latest > /dev/null 2>&1; then
             base_image="netbrain/zwift:latest"
@@ -138,7 +139,7 @@ jobs:
             echo "UPDATED=0"
         ) >> "${GITHUB_ENV}"
     - name: Build image
-      if: inputs.rebuild || steps.build_required.outputs.rebuild
+      if: inputs.rebuild || steps.build_required.outputs.rebuild == '1'
       env:
         COMMIT: ${{ steps.metadata.outputs.commit }}
         DOCKERFILE: ${{ steps.metadata.outputs.dockerfile }}
@@ -178,7 +179,7 @@ jobs:
             echo "UPDATED=1"
         ) >> "${GITHUB_ENV}"
     - name: Update scripts
-      if: steps.build_required.outputs.update_scripts
+      if: steps.build_required.outputs.update_scripts == '1'
       env:
         COMMIT: ${{ steps.metadata.outputs.commit }}
         IMAGE: ${{ steps.metadata.outputs.image }}
@@ -225,7 +226,7 @@ jobs:
             echo "Scripts are already up-to-date"
         fi
     - name: Update Zwift
-      if: steps.build_required.outputs.update_zwift
+      if: steps.build_required.outputs.update_zwift == '1'
       env:
         IMAGE: ${{ steps.metadata.outputs.image }}
         TAG: ${{ steps.metadata.outputs.tag }}
