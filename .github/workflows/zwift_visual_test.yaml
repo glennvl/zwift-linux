@@ -16,6 +16,10 @@ jobs:
       run: sudo apt-get install -y imagemagick x11-xserver-utils x11-apps
     - name: Checkout
       uses: actions/checkout@v7
+      with:
+        sparse-checkout: |
+          tests/zwift-visual-test/reference-screenshot.png
+        sparse-checkout-cone-mode: false
     - name: Start Zwift and capture screenshot
       env:
         IMAGE: ${{ inputs.image }}
