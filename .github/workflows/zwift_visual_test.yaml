@@ -20,23 +20,23 @@ jobs:
       env:
         IMAGE: ${{ inputs.image }}
       run: |
-        export DISPLAY=":99"
-        Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
-        sleep 3
-        xhost +
-        docker run \
-            --rm \
-            -d \
-            --name zwift-visual-test \
-            -e DISPLAY="${DISPLAY}" \
-            -e CONTAINER_TOOL="docker" \
-            -e ZWIFT_NO_GAMEMODE="1" \
-            --device="/dev/dri" \
-            -v /tmp/.X11-unix:/tmp/.X11-unix \
-            "${IMAGE}"
-        sleep 30
-        import -window root zwift-screenshot.png
-        docker kill zwift-visual-test
+        xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
+            docker run \
+                --rm \
+                -d \
+                --name zwift-visual-test \
+                -e DISPLAY=\${DISPLAY} \
+                -e XAUTHORITY=\${XAUTHORITY} \
+                -e CONTAINER_TOOL=docker \
+                -e ZWIFT_NO_GAMEMODE=1 \
+                --device=/dev/dri \
+                -v /tmp/.X11-unix:/tmp/.X11-unix \
+                -v \${XAUTHORITY}:\${XAUTHORITY} \
+                ${IMAGE}
+            sleep 30
+            import -window root zwift-screenshot.png
+            docker kill zwift-visual-test
+        "
     - name: Compare to reference screenshot
       run: |
         convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' reference-normalized.png
