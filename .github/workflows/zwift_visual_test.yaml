@@ -9,6 +9,7 @@ name: Zwift visual test
         type: string
 jobs:
   test:
+    name: Visual test
     runs-on: ubuntu-latest
     steps:
     - name: Install dependencies
