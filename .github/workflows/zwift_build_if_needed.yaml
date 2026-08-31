@@ -136,6 +136,7 @@ jobs:
         (
             echo "BASE_IMAGE=${base_image}"
             echo "UPDATED=0"
+            echo "TAGGED=0"
         ) >> "${GITHUB_ENV}"
     - name: Build image
       if: inputs.rebuild || steps.build_required.outputs.rebuild == '1'
@@ -175,6 +176,7 @@ jobs:
         (
             echo "BASE_IMAGE=${IMAGE}:${TAG}"
             echo "UPDATED=1"
+            echo "TAGGED=1"
         ) >> "${GITHUB_ENV}"
     - name: Update scripts
       if: steps.build_required.outputs.update_scripts == '1'
@@ -215,6 +217,7 @@ jobs:
                 -m "update scripts to ${COMMIT}" \
                 zwift-push \
                 "${IMAGE}:${TAG}"
+            echo "UPDATED=1" >> "${GITHUB_ENV}"
         else
             echo "Scripts are already up-to-date"
             docker tag "${BASE_IMAGE}" "${IMAGE}:${TAG}"
@@ -222,7 +225,7 @@ jobs:
 
         (
             echo "BASE_IMAGE=${IMAGE}:${TAG}"
-            echo "UPDATED=1"
+            echo "TAGGED=1"
         ) >> "${GITHUB_ENV}"
     - name: Update Zwift
       if: steps.build_required.outputs.update_zwift == '1'
@@ -256,6 +259,7 @@ jobs:
         (
             echo "BASE_IMAGE=${IMAGE}:${TAG}"
             echo "UPDATED=1"
+            echo "TAGGED=1"
         ) >> "${GITHUB_ENV}"
     - name: Push to Container Registry
       id: push
@@ -264,7 +268,7 @@ jobs:
         IMAGE: ${{ steps.metadata.outputs.image }}
         TAG: ${{ steps.metadata.outputs.tag }}
       run: |
-        if [[ ${UPDATED} -eq 1 ]]; then
+        if [[ ${TAGGED} -eq 1 ]]; then
             docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
             docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
             docker push "${IMAGE}:${TAG}"
