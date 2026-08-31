@@ -147,25 +147,22 @@ jobs:
         VERSION: ${{ steps.metadata.outputs.version }}
         REPO: ${{ inputs.repository }}
       run: |
-        build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-
-        export DISPLAY=":99"
-        Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
-        sleep 3
-
         docker build -t "${REPO@L}:build" src/
 
-        xhost +
+        xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
+            docker run \
+                --name zwift-build \
+                -e DISPLAY=\${DISPLAY} \
+                -e XAUTHORITY=\${XAUTHORITY} \
+                -e CONTAINER_TOOL=docker \
+                --device=/dev/dri \
+                -v /tmp/.X11-unix:/tmp/.X11-unix \
+                -v \${XAUTHORITY}:\${XAUTHORITY} \
+                ${REPO@L}:build \
+                --install
+        "
 
-        docker run \
-            --name zwift-build \
-            -e DISPLAY="${DISPLAY}" \
-            -e CONTAINER_TOOL="docker" \
-            --device="/dev/dri" \
-            -v /tmp/.X11-unix:/tmp/.X11-unix \
-            "${REPO@L}:build" \
-            --install
-
+        build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
         docker commit \
             --change="LABEL org.opencontainers.image.created=${build_date}" \
             --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
@@ -234,23 +231,20 @@ jobs:
         TAG: ${{ steps.metadata.outputs.tag }}
         VERSION: ${{ steps.metadata.outputs.version }}
       run: |
+        xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
+            docker run \
+                --name zwift-update \
+                -e DISPLAY=\${DISPLAY} \
+                -e XAUTHORITY=\${XAUTHORITY} \
+                -e CONTAINER_TOOL=docker \
+                --device=/dev/dri \
+                -v /tmp/.X11-unix:/tmp/.X11-unix \
+                -v \${XAUTHORITY}:\${XAUTHORITY} \
+                ${BASE_IMAGE} \
+                --update
+        "
+
         build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-
-        export DISPLAY=":99"
-        Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
-        sleep 3
-
-        xhost +
-
-        docker run \
-            --name zwift-update \
-            -e DISPLAY="${DISPLAY}" \
-            -e CONTAINER_TOOL="docker" \
-            --device="/dev/dri" \
-            -v /tmp/.X11-unix:/tmp/.X11-unix \
-            "${BASE_IMAGE}" \
-            --update
-
         docker commit \
             --change="LABEL org.opencontainers.image.created=${build_date}" \
             --change="LABEL org.opencontainers.image.version=${VERSION}" \
