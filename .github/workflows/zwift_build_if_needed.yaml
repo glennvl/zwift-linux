@@ -215,14 +215,15 @@ jobs:
                 -m "update scripts to ${COMMIT}" \
                 zwift-push \
                 "${IMAGE}:${TAG}"
-
-            (
-                echo "BASE_IMAGE=${IMAGE}:${TAG}"
-                echo "UPDATED=1"
-            ) >> "${GITHUB_ENV}"
         else
             echo "Scripts are already up-to-date"
+            docker tag "${BASE_IMAGE}" "${IMAGE}:${TAG}"
         fi
+
+        (
+            echo "BASE_IMAGE=${IMAGE}:${TAG}"
+            echo "UPDATED=1"
+        ) >> "${GITHUB_ENV}"
     - name: Update Zwift
       if: steps.build_required.outputs.update_zwift == '1'
       env:
