@@ -28,9 +28,9 @@ name: Build zwift image
       image:
         description: zwift image
         value: ${{ jobs.build.outputs.image }}
-      rebuild:
-        description: was the image rebuilt
-        value: ${{ jobs.build.outputs.rebuild }}
+      updated:
+        description: was the image updated
+        value: ${{ jobs.build.outputs.updated }}
       version:
         description: bundled zwift version
         value: ${{ jobs.build.outputs.version }}
@@ -44,9 +44,9 @@ jobs:
     timeout-minutes: 60
     outputs:
       commit: ${{ steps.metadata.outputs.commmit }}
-      image: ${{ steps.metadata.outputs.image }}
+      image: ${{ steps.metadata.outputs.image }}:${{ steps.metadata.outputs.tag }}
       version: ${{ steps.metadata.outputs.version }}
-      rebuild: ${{ steps.build_required.outputs.rebuild }}
+      updated: ${{ steps.push.outputs.updated }}
     steps:
     - name: Login to Container Registry
       uses: docker/login-action@v4
@@ -67,36 +67,83 @@ jobs:
         REPO: ${{ inputs.repository }}
         ZWIFT_VERSION_URL: https://cdn.zwift.com/gameassets/Zwift_Updates_Root/Zwift_ver_cur.xml
       run: |
-        commit="$(git rev-parse --short HEAD)"
+        commit="$(git rev-parse HEAD)"
+        dockerfile="$(git rev-parse HEAD:src/Dockerfile)"
         version="$(curl -s "${ZWIFT_VERSION_URL}" | grep -oP 'sversion="\K.*?(?=")' | cut -f 1 -d ' ')"
-        image="${REGISTRY}/${USERNAME@L}/$(basename "${REPO@L}"):${version}_${commit}"
+        image="${REGISTRY}/${USERNAME@L}/$(basename "${REPO@L}")"
+        tag="${version}_${commit}"
 
         echo "Zwift version: ${version}"
         echo "Commit hash:   ${commit}"
 
         (
             echo "commit=${commit}"
+            echo "dockerfile=${dockerfile}"
             echo "image=${image}"
+            echo "tag=${tag}"
             echo "version=${version}"
         ) >> "${GITHUB_OUTPUT}"
     - name: Check build required
       id: build_required
       env:
+        DOCKERFILE: ${{ steps.metadata.outputs.dockerfile }}
         IMAGE: ${{ steps.metadata.outputs.image }}
+        TAG: ${{ steps.metadata.outputs.tag }}
+        VERSION: ${{ steps.metadata.outputs.version }}
         REPO: ${{ inputs.repository }}
       run: |
+        base_image="${IMAGE}:${TAG}"
         rebuild=0
-        if docker manifest inspect "${IMAGE}" > /dev/null 2>&1; then
+        update_zwift=0
+        update_scripts=0
+
+        if docker manifest inspect "${IMAGE}:${TAG}" > /dev/null 2>&1; then
             echo "${REPO} is already up-to-date"
+        elif docker pull "${IMAGE}:${commit}" > /dev/null 2>&1; then
+            base_image="${IMAGE}:${commit}"
+            update_zwift=1
+        elif docker pull netbrain/zwift:latest > /dev/null 2>&1; then
+            base_image="netbrain/zwift:latest"
+            if ! embedded_dockerfile="$(docker inspect \
+                --format '{{ index .Config.Labels "io.github.netbrain.zwift.dockerfile" }}' \
+                "${base_image}" \
+            )" || [[ ${embedded_dockerfile} != "${DOCKERFILE}" ]]; then
+                rebuild=1
+            elif ! embedded_zwift="$(docker inspect \
+                --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
+                "${base_image}" \
+            )" || [[ ${embedded_zwift} != "${VERSION}" ]]; then
+                update_zwift=1
+                update_scripts=1
+            else
+                update_scripts=1
+            fi
         else
             rebuild=1
         fi
-        echo "rebuild=${rebuild}" >> "${GITHUB_OUTPUT}"
+
+        echo "Base image:    ${base_image}"
+        echo "Rebuild:       ${rebuild}"
+        echo "Zwift update:  ${update_zwift}"
+        echo "Script update: ${update_scripts}"
+
+        (
+            echo "rebuild=${rebuild}"
+            echo "update_zwift=${update_zwift}"
+            echo "update_scripts=${update_scripts}"
+        ) >> "${GITHUB_OUTPUT}"
+
+        (
+            echo "BASE_IMAGE=${base_image}"
+            echo "UPDATED=0"
+        ) >> "${GITHUB_ENV}"
     - name: Build image
       if: inputs.rebuild || steps.build_required.outputs.rebuild
       env:
         COMMIT: ${{ steps.metadata.outputs.commit }}
+        DOCKERFILE: ${{ steps.metadata.outputs.dockerfile }}
         IMAGE: ${{ steps.metadata.outputs.image }}
+        TAG: ${{ steps.metadata.outputs.tag }}
         VERSION: ${{ steps.metadata.outputs.version }}
         REPO: ${{ inputs.repository }}
       run: |
@@ -118,12 +165,116 @@ jobs:
             -v /tmp/.X11-unix:/tmp/.X11-unix \
             "${REPO@L}:build" \
             --install
+
         docker commit \
             --change="LABEL org.opencontainers.image.created=${build_date}" \
             --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
             --change="LABEL org.opencontainers.image.version=${VERSION}" \
+            --change="LABEL io.github.netbrain.zwift.dockerfile=${DOCKERFILE}" \
             --change='CMD [""]' \
             -m "build from zwift ${VERSION} and commit ${COMMIT}" \
             zwift-build \
-            "${IMAGE}"
-        docker push "${IMAGE}"
+            "${IMAGE}:${TAG}"
+
+        (
+            echo "BASE_IMAGE=${IMAGE}:${TAG}"
+            echo "UPDATED=1"
+        ) >> "${GITHUB_ENV}"
+    - name: Update scripts
+      if: steps.build_required.outputs.update_scripts
+      env:
+        COMMIT: ${{ steps.metadata.outputs.commit }}
+        IMAGE: ${{ steps.metadata.outputs.image }}
+        TAG: ${{ steps.metadata.outputs.tag }}
+      run: |
+        docker create --name zwift-push "${BASE_IMAGE}"
+
+        declare -A files_map
+        files_map["/bin/entrypoint"]="src/entrypoint.sh"
+        files_map["/bin/zwift-auth"]="src/zwift-auth.sh"
+        files_map["/bin/update_zwift.sh"]="src/update_zwift.sh"
+        files_map["/bin/run_zwift.sh"]="src/run_zwift.sh"
+
+        has_changes=0
+        for container_path in "${!files_map[@]}"; do
+            local_file="${files_map[${container_path}]}"
+            mkdir -p "$(dirname "/tmp/${local_file}")"
+            docker cp "zwift-push:${container_path}" "/tmp/${local_file}"
+            diff "${local_file}" "/tmp/${local_file}" > /dev/null || {
+                if [[ ${?} -eq 1 ]]; then
+                    has_changes=1
+                    docker cp "${local_file}" "zwift-push:${container_path}"
+                else
+                    echo "::error::Failed to diff '${local_file}'"
+                    exit 1
+                fi
+            }
+        done
+
+        if [[ ${has_changes} -eq 1 ]]; then
+            build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            docker commit \
+                --change="LABEL org.opencontainers.image.created=${build_date}" \
+                --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
+                -m "update scripts to ${COMMIT}" \
+                zwift-push \
+                "${IMAGE}:${TAG}"
+
+            (
+                echo "BASE_IMAGE=${IMAGE}:${TAG}"
+                echo "UPDATED=1"
+            ) >> "${GITHUB_ENV}"
+        else
+            echo "Scripts are already up-to-date"
+        fi
+    - name: Update Zwift
+      if: steps.build_required.outputs.update_zwift
+      env:
+        IMAGE: ${{ steps.metadata.outputs.image }}
+        TAG: ${{ steps.metadata.outputs.tag }}
+        VERSION: ${{ steps.metadata.outputs.version }}
+      run: |
+        build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+        export DISPLAY=":99"
+        Xvfb "${DISPLAY}" -ac -screen 0 "800x600x24" -nolisten tcp &
+        sleep 3
+
+        xhost +
+
+        docker run \
+            --name zwift-update \
+            -e DISPLAY="${DISPLAY}" \
+            -e CONTAINER_TOOL="docker" \
+            --device="/dev/dri" \
+            -v /tmp/.X11-unix:/tmp/.X11-unix \
+            "${BASE_IMAGE}" \
+            --update
+
+        docker commit \
+            --change="LABEL org.opencontainers.image.created=${build_date}" \
+            --change="LABEL org.opencontainers.image.version=${VERSION}" \
+            --change='CMD [""]' \
+            -m "update zwift to ${VERSION}" \
+            zwift-update \
+            "${IMAGE}:${TAG}"
+
+        (
+            echo "BASE_IMAGE=${IMAGE}:${TAG}"
+            echo "UPDATED=1"
+        ) >> "${GITHUB_ENV}"
+    - name: Push to Container Registry
+      id: push
+      env:
+        COMMIT: ${{ steps.metadata.outputs.commit }}
+        IMAGE: ${{ steps.metadata.outputs.image }}
+        TAG: ${{ steps.metadata.outputs.tag }}
+      run: |
+        if [[ ${UPDATED} -eq 1 ]]; then
+            docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
+            docker push "${IMAGE}:${TAG}"
+            docker push "${IMAGE}:${COMMIT}"
+        else
+            echo "Image is already up-to-date"
+        fi
+        echo "updated=${UPDATED}" >> "${GITHUB_OUTPUT}"
