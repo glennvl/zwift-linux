@@ -120,6 +120,7 @@ jobs:
                 update_scripts=1
             fi
         else
+            base_image=""
             rebuild=1
         fi
 
