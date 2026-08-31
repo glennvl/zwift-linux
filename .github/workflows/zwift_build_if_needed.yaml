@@ -103,8 +103,8 @@ jobs:
         elif docker pull "${IMAGE}:${COMMIT}" > /dev/null 2>&1; then
             base_image="${IMAGE}:${COMMIT}"
             update_zwift=1
-        elif docker pull netbrain/zwift:latest > /dev/null 2>&1; then
-            base_image="netbrain/zwift:latest"
+        elif docker pull "${IMAGE}:latest" > /dev/null 2>&1; then
+            base_image="${IMAGE}:latest"
             if ! embedded_dockerfile="$(docker inspect \
                 --format '{{ index .Config.Labels "io.github.netbrain.zwift.dockerfile" }}' \
                 "${base_image}" \
@@ -267,8 +267,10 @@ jobs:
       run: |
         if [[ ${UPDATED} -eq 1 ]]; then
             docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
+            docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
             docker push "${IMAGE}:${TAG}"
             docker push "${IMAGE}:${COMMIT}"
+            docker push "${IMAGE}:latest"
         else
             echo "Image is already up-to-date"
         fi
