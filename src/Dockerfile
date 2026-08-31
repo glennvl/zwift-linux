@@ -8,8 +8,7 @@ ARG RUNFROMPROCESS_VERSION=a3d003c07d1bd11ff93c4cac96d2c3aa5deb8471
 # - mingw to cross-compile for windows
 # - rust cross-compiler for windows
 RUN DEBIAN_FRONTEND="noninteractive" apt-get update \
- && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y \
-        g++-mingw-w64-x86-64 \
+ && DEBIAN_FRONTEND="noninteractive" apt-get install --no-install-recommends -y g++-mingw-w64-x86-64 \
  && rm -rf /var/lib/apt/lists/* \
  && rustup target add x86_64-pc-windows-gnu
 
@@ -25,13 +24,14 @@ FROM debian:${DEBIAN_VERSION}-slim AS wine-base
 # - 10.17    : default to egl for opengl in x11
 # - 9.9      : support native wayland
 # Winetricks
+# - cf0fe6   : webview2 verb added (not officially released yet)
 # - 20260125 : webview2 in zwift launcher works
 # - 20240105 : first version used in this Dockerfile
 ARG DEBIAN_VERSION
 ARG WINE_BRANCH="devel"
-ARG WINE_VERSION="=9.9~${DEBIAN_VERSION}-1"
-ARG WINETRICKS_VERSION=20260125
-ARG WINETRICKS_CHECKSUM=431f82fc74000e6c864409f1d8fb495d696c03928808e3e8acffc45179312a7b
+ARG WINE_VERSION="=11.16~${DEBIAN_VERSION}-1"
+ARG WINETRICKS_VERSION=5a59ea07513b24093bd90fad943ecf9543cf05bc
+ARG WINETRICKS_CHECKSUM=f35c29737ca08a583569e6a3752d52fbe23333c5acfad5f16c4177d25eaf3f4b
 
 # Install prerequisites
 # - ca-certificates for wget and curl
@@ -39,8 +39,11 @@ ARG WINETRICKS_CHECKSUM=431f82fc74000e6c864409f1d8fb495d696c03928808e3e8acffc451
 # - curl used in zwift authentication script
 # - gamemode for freedesktop screensaver inhibit
 # - gosu for invoking scripts in entrypoint
-# - libegl1 and libgl1 for GL library
+# - gpg for dearmoring winehq key
+# - gstreamer for h264 codec
+# - libglvnd: libegl1 libgl1 libgles1 libgles2 libglvnd0 libglx0 libopengl0 for graphics libraries
 # - libvulkan1 for vulkan loader library
+# - mesa-utils for testing graphics: glxgears, eglgears_wayland, eglgears_x11
 # - procps for pgrep
 # - rsync to synchronize zwift volume with zwift appdata
 # - wget for downloading winehq key
@@ -54,11 +57,30 @@ RUN dpkg --add-architecture i386 \
         curl \
         gamemode \
         gosu \
-        libegl1 \
-        libgl1 \
+        gpg \
+        gstreamer1.0-plugins-base \
+        gstreamer1.0-plugins-good \
+        gstreamer1.0-plugins-bad \
+        gstreamer1.0-plugins-ugly \
+        gstreamer1.0-libav \
+        gstreamer1.0-tools \
+        gstreamer1.0-x \
+        gstreamer1.0-alsa \
+        gstreamer1.0-gl \
+        gstreamer1.0-gtk3 \
+        gstreamer1.0-qt5 \
+        gstreamer1.0-pulseaudio \
         libgamemode0.i386 \
         libgamemodeauto0.i386 \
+        libegl1 \
+        libgl1 \
+        libgles1 \
+        libgles2 \
+        libglvnd0 \
+        libglx0 \
+        libopengl0 \
         libvulkan1 \
+        mesa-utils \
         procps \
         rsync \
         wget \
@@ -66,36 +88,34 @@ RUN dpkg --add-architecture i386 \
         xdg-utils \
  && rm -rf /var/lib/apt/lists/*
 
-# Install wine (including recommends, which appear to be required)
+# Install wine (including recommends, see https://gitlab.winehq.org/wine/wine/-/wikis/Debian-Ubuntu)
 # hadolint ignore=DL3015
-RUN wget -qO /etc/apt/trusted.gpg.d/winehq.asc https://dl.winehq.org/wine-builds/winehq.key \
- && echo "deb https://dl.winehq.org/wine-builds/debian/ ${DEBIAN_VERSION} main" > /etc/apt/sources.list.d/winehq.list \
+RUN mkdir -p /etc/apt/keyrings \
+ && wget -qO /tmp/winehq.key https://dl.winehq.org/wine-builds/winehq.key \
+ && gpg --dearmor -o /etc/apt/keyrings/winehq-archive.key /tmp/winehq.key \
+ && rm -f /tmp/winehq.key \
+ && wget -qNP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/debian/dists/${DEBIAN_VERSION}/winehq-${DEBIAN_VERSION}.sources \
  && DEBIAN_FRONTEND="noninteractive" apt-get update \
- && DEBIAN_FRONTEND="noninteractive" apt-get install -y \
-        wine-${WINE_BRANCH}${WINE_VERSION} \
-        wine-${WINE_BRANCH}-amd64${WINE_VERSION} \
-        wine-${WINE_BRANCH}-i386${WINE_VERSION} \
-        winehq-${WINE_BRANCH}${WINE_VERSION} \
+ && DEBIAN_FRONTEND="noninteractive" apt-get install --install-recommends -y winehq-${WINE_BRANCH}${WINE_VERSION} \
  && rm -rf /var/lib/apt/lists/*
 
 # Download winetricks
 ADD --checksum=sha256:${WINETRICKS_CHECKSUM} --chmod=755 https://raw.githubusercontent.com/Winetricks/winetricks/${WINETRICKS_VERSION}/src/winetricks /usr/local/bin/
 
-# Create passwordless user and make nvidia libraries discoverable
-RUN adduser --disabled-password --gecos '' user \
- && echo "/usr/local/nvidia/lib" >> /etc/ld.so.conf.d/nvidia.conf \
- && echo "/usr/local/nvidia/lib64" >> /etc/ld.so.conf.d/nvidia.conf
+# Configure nvidia driver
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=all
+COPY nvidia-egl.json /usr/share/glvnd/egl_vendor.d/10_nvidia.json
+COPY nvidia-egl-xcb.json /usr/share/egl/egl_external_platform.d/20_nvidia_xcb.json
 
-# Required for non-glvnd setups
-ENV LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu:/usr/lib/i386-linux-gnu:/usr/local/nvidia/lib:/usr/local/nvidia/lib64
-
-# Configure audio driver
+# Add audio driver configuration file
 COPY pulse-client.conf /etc/pulse/client.conf
+
+# Create passwordless user
+RUN useradd --create-home --shell /bin/bash user
 
 FROM wine-base
 
-ENV NVIDIA_VISIBLE_DEVICES=all
-ENV NVIDIA_DRIVER_CAPABILITIES=all
 ENV WINEDEBUG=fixme-all
 ENV WINE_PREFIX="/home/user/.wine"
 ENV WINE_USER_HOME="${WINE_PREFIX}/drive_c/users/user"
