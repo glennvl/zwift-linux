@@ -9,7 +9,7 @@ name: Zwift visual test
         type: string
 jobs:
   test:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     steps:
     - name: Install dependencies
       run: sudo apt-get install -y x11-xserver-utils x11-apps
