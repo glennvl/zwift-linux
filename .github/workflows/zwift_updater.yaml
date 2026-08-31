@@ -38,7 +38,6 @@ jobs:
       with:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
-    - uses: netbrain/free-disk-space-action@v0.0.1
     - name: Deploy image
       env:
         IMAGE: ${{ needs.build.outputs.image }}
