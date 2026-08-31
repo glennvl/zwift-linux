@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Install dependencies
-      run: sudo apt-get install -y x11-xserver-utils x11-apps
+      run: sudo apt-get install -y imagemagick x11-xserver-utils x11-apps
     - name: Checkout
       uses: actions/checkout@v7
     - name: Start Zwift and capture screenshot
