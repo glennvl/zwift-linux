@@ -56,7 +56,7 @@ jobs:
         REPO: ${{ github.repository }}
       run: |
         docker pull "${IMAGE}"
-        docker tag "${IMAGE}" "${REPO@L}:${VERSION}"
-        docker tag "${IMAGE}" "${REPO@L}:latest"
-        docker push "${REPO@L}:${VERSION}"
-        docker push "${REPO@L}:latest"
+        docker tag "${IMAGE}" "${REPO}:${VERSION}"
+        docker tag "${IMAGE}" "${REPO}:latest"
+        docker push "${REPO}:${VERSION}"
+        docker push "${REPO}:latest"

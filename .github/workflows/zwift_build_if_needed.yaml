@@ -73,7 +73,7 @@ jobs:
         commit="$(git rev-parse HEAD)"
         dockerfile="$(git rev-parse HEAD:src/Dockerfile)"
         version="$(curl -s "${ZWIFT_VERSION_URL}" | grep -oP 'sversion="\K.*?(?=")' | cut -f 1 -d ' ')"
-        image="${REGISTRY}/${REPO@L}"
+        image="${REGISTRY}/${REPO}"
         tag="${version}_${commit}"
 
         echo "Zwift version: ${version}"
