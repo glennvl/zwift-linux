@@ -22,6 +22,7 @@ jobs:
       token: ${{ secrets.GITHUB_TOKEN }}
   test:
     name: Test container image
+    if: github.event_name != 'schedule' || needs.build.outputs.updated == '1'
     needs: build
     uses: ./.github/workflows/zwift_visual_test.yaml
     with:
