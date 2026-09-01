@@ -3,7 +3,8 @@ name: Zwift updater
 'on':
   workflow_dispatch:
   schedule:
-  - cron: 0 * * * *
+  - cron: 0 0 1 */3 * # on the first at 00:00 every three months
+  - cron: 0 * * * * # every hour
   push:
     branches:
     - master
@@ -14,7 +15,7 @@ jobs:
     name: Build container image
     uses: ./.github/workflows/zwift_build_if_needed.yaml
     with:
-      rebuild: false # TODO rebuild at midnight on the 1st of every three months: 0 0 1 */3 *
+      rebuild: ${{ github.event_name == 'schedule' && github.event.schedule == '0 0 1 */3 *' }}
       repository: ${{ github.repository }}
       username: ${{ github.actor }}
     secrets:
