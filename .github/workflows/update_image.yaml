@@ -1,5 +1,5 @@
 ---
-name: Zwift updater
+name: Update zwift image
 'on':
   pull_request:
   push:
@@ -12,8 +12,8 @@ concurrency:
   group: zwift-container-image
 jobs:
   build:
-    name: Build container image
-    uses: ./.github/workflows/zwift_build_if_needed.yaml
+    name: Build
+    uses: ./.github/workflows/call_build_image.yaml
     with:
       rebuild: ${{ github.event_name == 'schedule' && github.event.schedule == '0 0 1 */3 *' }}
       repository: ${{ github.repository }}
@@ -21,17 +21,17 @@ jobs:
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
   test:
-    name: Test container image
+    name: Test
     if: github.event_name != 'schedule' || needs.build.outputs.updated == '1'
     needs: build
-    uses: ./.github/workflows/zwift_visual_test.yaml
+    uses: ./.github/workflows/call_test_image_visual.yaml
     with:
       image: ${{ needs.build.outputs.image }}
       username: ${{ github.actor }}
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
   deploy:
-    name: Deploy container image
+    name: Deploy
     if: github.repository == 'netbrain/zwift' && github.event_name != 'pull_request' && needs.build.outputs.updated == '1'
     runs-on: ubuntu-latest
     permissions:
