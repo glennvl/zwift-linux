@@ -1,13 +1,13 @@
 ---
 name: Zwift updater
 'on':
-  workflow_dispatch:
-  schedule:
-  - cron: 0 0 1 */3 * # on the first at 00:00 every three months
-  - cron: 0 * * * * # every hour
+  pull_request:
   push:
     branches:
     - master
+  schedule:
+  - cron: 0 0 1 */3 * # on the first at 00:00 every three months
+  - cron: 0 * * * * # every hour
 concurrency:
   group: zwift-container-image
 jobs:
@@ -31,7 +31,7 @@ jobs:
       token: ${{ secrets.GITHUB_TOKEN }}
   deploy:
     name: Deploy container image
-    if: needs.build.outputs.updated == '1' && github.repository == 'netbrain/zwift'
+    if: github.repository == 'netbrain/zwift' && github.event_name != 'pull_request' && needs.build.outputs.updated == '1'
     runs-on: ubuntu-latest
     permissions:
       contents: read
