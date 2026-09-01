@@ -35,7 +35,7 @@ jobs:
         sparse-checkout: |
           tests/zwift-visual-test/reference-screenshot.png
         sparse-checkout-cone-mode: false
-    - name: Login to Container Registry
+    - name: Login to container registry
       uses: docker/login-action@v4
       with:
         registry: ${{ inputs.registry }}
