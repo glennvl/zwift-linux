@@ -11,7 +11,7 @@ jobs:
     uses: ./.github/workflows/zwift_build_if_needed.yaml
     with:
       repository: ${{ github.repository }}
-      username: ${{ github.repository_owner }}
+      username: ${{ github.actor }}
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
   test:
@@ -20,6 +20,6 @@ jobs:
     uses: ./.github/workflows/zwift_visual_test.yaml
     with:
       image: ${{ needs.build.outputs.image }}
-      username: ${{ github.repository_owner }}
+      username: ${{ github.actor }}
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
