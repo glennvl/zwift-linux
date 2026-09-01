@@ -7,10 +7,25 @@ name: Zwift visual test
         description: zwift image to test
         required: true
         type: string
+      registry:
+        description: container registry
+        default: ghcr.io
+        required: false
+        type: string
+      username:
+        description: username for container registry
+        required: true
+        type: string
+    secrets:
+      token:
+        description: access token for container registry
+        required: true
 jobs:
   test:
     name: Visual test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
     - name: Install dependencies
       run: sudo apt-get install -y imagemagick x11-xserver-utils x11-apps
@@ -20,6 +35,12 @@ jobs:
         sparse-checkout: |
           tests/zwift-visual-test/reference-screenshot.png
         sparse-checkout-cone-mode: false
+    - name: Login to Container Registry
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ secrets.token }}
     - name: Start Zwift and capture screenshot
       env:
         IMAGE: ${{ inputs.image }}
