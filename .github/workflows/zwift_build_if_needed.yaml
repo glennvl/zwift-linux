@@ -4,7 +4,7 @@ name: Build zwift image
   workflow_call:
     inputs:
       repository:
-        description: image repository
+        description: github repository
         required: true
         type: string
       registry:
@@ -161,6 +161,7 @@ jobs:
         IMAGE: ${{ steps.metadata.outputs.image }}
         TAG: ${{ steps.metadata.outputs.tag }}
         VERSION: ${{ steps.metadata.outputs.version }}
+        REPO: ${{ inputs.repository }}
       run: |
         docker build -t "${IMAGE}:build" src/
 
@@ -182,6 +183,7 @@ jobs:
             --change="LABEL org.opencontainers.image.created=${build_date}" \
             --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
             --change="LABEL org.opencontainers.image.version=${VERSION}" \
+            --change="LABEL org.opencontainers.image.source=https://github.com/${REPOSITORY}" \
             --change="LABEL io.github.netbrain.zwift.dockerfile=${DOCKERFILE}" \
             --change='CMD [""]' \
             -m "build from zwift ${VERSION} and commit ${COMMIT}" \
