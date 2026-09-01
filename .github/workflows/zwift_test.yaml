@@ -20,3 +20,6 @@ jobs:
     uses: ./.github/workflows/zwift_visual_test.yaml
     with:
       image: ${{ needs.build.outputs.image }}
+      username: ${{ github.repository_owner }}
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
