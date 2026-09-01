@@ -62,6 +62,11 @@ jobs:
             import -window root zwift-screenshot.png
             docker kill zwift-visual-test
         "
+    - name: Upload screenshot
+      uses: actions/upload-artifact@v7
+      with:
+        path: zwift-screenshot.png
+        archive: false
     - name: Compare to reference screenshot
       run: |
         convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' reference-normalized.png
@@ -75,9 +80,6 @@ jobs:
         )" || [[ ${different_pixels} != "0" ]]; then
             echo "::error::Zwift screenshot differs from reference image! (pixel difference = ${different_pixels})"
             exit 1
+        else
+            echo "Screenshot and reference image are the same, test succeeded!"
         fi
-    - name: Upload screenshot
-      uses: actions/upload-artifact@v7
-      with:
-        path: zwift-screenshot.png
-        archive: false
