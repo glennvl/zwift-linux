@@ -101,9 +101,21 @@ jobs:
         if docker manifest inspect "${IMAGE}:${TAG}" > /dev/null 2>&1; then
             echo "${REPO} is already up-to-date"
         elif docker pull "${IMAGE}:${COMMIT}" > /dev/null 2>&1; then
+            echo "Using image for commit as base image"
             base_image="${IMAGE}:${COMMIT}"
             update_zwift=1
+        elif docker pull "${IMAGE}:${DOCKERFILE}" > /dev/null 2>&1; then
+            echo "Using image for dockerfile as base image"
+            base_image="${IMAGE}:${DOCKERFILE}"
+            update_scripts=1
+            if ! embedded_zwift="$(docker inspect \
+                --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
+                "${base_image}" \
+            )" || [[ ${embedded_zwift} != "${VERSION}" ]]; then
+                update_zwift=1
+            fi
         elif docker pull "${IMAGE}:latest" > /dev/null 2>&1; then
+            echo "Using latest image as base image"
             base_image="${IMAGE}:latest"
             if ! embedded_dockerfile="$(docker inspect \
                 --format '{{ index .Config.Labels "io.github.netbrain.zwift.dockerfile" }}' \
@@ -114,12 +126,13 @@ jobs:
                 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
                 "${base_image}" \
             )" || [[ ${embedded_zwift} != "${VERSION}" ]]; then
-                update_zwift=1
                 update_scripts=1
+                update_zwift=1
             else
                 update_scripts=1
             fi
         else
+            echo "No suitable base image found, build from scratch"
             base_image=""
             rebuild=1
         fi
