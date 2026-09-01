@@ -1,5 +1,5 @@
 ---
-name: Update zwift image
+name: Build, Test, and Deploy Zwift image
 'on':
   pull_request:
   push:
