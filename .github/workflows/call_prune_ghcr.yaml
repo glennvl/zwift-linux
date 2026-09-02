@@ -1,5 +1,5 @@
 ---
-name: Prune ghcr
+name: Prune images on ghcr.io
 'on':
   workflow_call:
     inputs:
@@ -42,7 +42,7 @@ jobs:
       run: |
         today="$(date +%F)"
 
-        declare -a versions_array=()
+        declare -a images_array=()
 
         repository="$(basename "${REPO}")"
         response="$(curl -sf \
@@ -53,15 +53,15 @@ jobs:
 
         count="$(jq '.[] | .id' <<< "${response}" | wc -l)"
         for i in $(seq 0 $((count - 1))); do
-            id="$(jq -r ".[${i}].id" <<< "${response}")"
+            image_id="$(jq -r ".[${i}].id" <<< "${response}")"
             last_updated="$(jq -r ".[${i}].updated_at" <<< "${response}")"
             last_updated_day="$(date -ud "${last_updated}" +%F)"
             age_days="$((($(date -d "${today}" +%s) - $(date -d "${last_updated_day}" +%s)) / 86400))"
             tags="$(jq -r "[.[${i}].metadata.container.tags[]?] | join(\",\")" <<< "${response}")"
-            versions_array+=("${id}:${age_days}:${tags}")
+            images_array+=("${image_id}:${age_days}:${tags}")
         done
 
-        echo "VERSIONS=${versions_array[*]}" >> "${GITHUB_ENV}"
+        echo "IMAGES=${images_array[*]}" >> "${GITHUB_ENV}"
     - name: Prune old tags
       env:
         DRYRUN: ${{ inputs.dry-run }}
@@ -74,21 +74,21 @@ jobs:
         (
             echo "## Github Container Registry"
             echo ""
-            echo "| Tag | Age (days) | Status |"
-            echo "|:----|-----------:|:------:|"
+            echo "| Image Id | Tag | Age (days) | Status |"
+            echo "|:---------|:----|-----------:|:------:|"
         ) >> "${GITHUB_STEP_SUMMARY}"
 
-        IFS=" " read -ra versions_array <<< "${VERSIONS}"
-        if [[ ${#versions_array[@]} -eq 0 ]]; then
-            echo "| - | - | - |" >> "${GITHUB_STEP_SUMMARY}"
+        IFS=" " read -ra images_array <<< "${IMAGES}"
+        if [[ ${#images_array[@]} -eq 0 ]]; then
+            echo "| - | - | - | - |" >> "${GITHUB_STEP_SUMMARY}"
         fi
 
         repository="$(basename "${REPO}")"
 
         deleted=0
-        for id_age_tags in "${versions_array[@]}"; do
+        for id_age_tags in "${images_array[@]}"; do
             IFS=":" read -ra id_age_tags_array <<< "${id_age_tags}"
-            id="${id_age_tags_array[0]}"
+            image_id="${id_age_tags_array[0]}"
             age="${id_age_tags_array[1]}"
             tags="${id_age_tags_array[2]}"
             IFS="," read -ra tags_array <<< "${tags}"
@@ -100,19 +100,19 @@ jobs:
             elif [[ ${DRYRUN} == "true" ]]; then
                 status="🚫"
             elif http_code="$(curl -so /dev/null -w "%{http_code}" -X delete \
-                "https://api.github.com/users/${USERNAME}/packages/container/${repository}/versions/${id}" \
+                "https://api.github.com/users/${USERNAME}/packages/container/${repository}/versions/${image_id}" \
                 -H "Authorization: Bearer ${TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
             )" && [[ ${http_code} -eq 204 ]]; then
                 ((deleted+="${#tags_array[@]}")) || true
                 status="🚫"
             else
-                echo "::warning::Failed to delete ${USERNAME}/${repository}/versions/${id} (HTTP ${http_code})"
+                echo "::warning::Failed to delete image ${image_id} from ${USERNAME}/${repository} (HTTP ${http_code})"
                 status="⚠️"
             fi
 
             for tag in "${tags_array[@]}"; do
-                echo "| ${USERNAME}/${repository}:${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
+                echo "| ${image_id} | ${USERNAME}/${repository}:${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
             done
         done
 
