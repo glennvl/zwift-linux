@@ -51,6 +51,7 @@ jobs:
       build-username: ${{ github.actor }}
       deploy-registry: docker.io
       deploy-username: ${{ vars.DOCKERHUB_USERNAME }}
+      environment: docker-hub
       image: ${{ needs.build.outputs.image }}
       repository: ${{ github.repository }}
       tag: ${{ needs.build.outputs.version }}
