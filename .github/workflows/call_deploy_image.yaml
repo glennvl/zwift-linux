@@ -46,7 +46,6 @@ jobs:
   deploy:
     name: Deploy to container registry
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     permissions:
       contents: read
       packages: write
