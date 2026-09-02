@@ -19,6 +19,10 @@ name: Deploy zwift image
         description: username for deploy container registry
         required: true
         type: string
+      environment:
+        description: deployment environment
+        required: true
+        type: string
       image:
         description: image to deploy
         required: true
@@ -31,10 +35,6 @@ name: Deploy zwift image
         description: image tag
         required: true
         type: string
-    outputs:
-      image:
-        description: zwift image
-        value: ${{ jobs.deploy.outputs.image }}
     secrets:
       build-token:
         description: access token for build container registry
@@ -46,11 +46,12 @@ jobs:
   deploy:
     name: Deploy to container registry
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ steps.deploy.outputs.image }}
     permissions:
       contents: read
       packages: write
-    outputs:
-      image: ${{ steps.deploy.outputs.image }}
     steps:
     - name: Login to build container registry
       uses: docker/login-action@v4
