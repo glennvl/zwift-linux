@@ -1,5 +1,5 @@
 ---
-name: Prune docker hub
+name: Prune images on docker.io
 'on':
   workflow_call:
     inputs:
