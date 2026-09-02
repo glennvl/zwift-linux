@@ -11,7 +11,7 @@ name: Prune old images
         type: boolean
 jobs:
   prune-dockerhub:
-    name: Docker Hub
+    name: docker.io
     if: github.repository == 'netbrain/zwift'
     uses: ./.github/workflows/call_prune_dockerhub.yaml
     with:
@@ -23,7 +23,7 @@ jobs:
     secrets:
       token: secrets.DOCKERHUB_TOKEN
   prune-ghcr:
-    name: GHCR
+    name: ghcr.io
     uses: ./.github/workflows/call_prune_ghcr.yaml
     with:
       dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
