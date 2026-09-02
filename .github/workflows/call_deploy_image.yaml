@@ -19,10 +19,6 @@ name: Deploy zwift image
         description: username for deploy container registry
         required: true
         type: string
-      environment:
-        description: deployment environment
-        required: true
-        type: string
       image:
         description: image to deploy
         required: true
@@ -46,9 +42,6 @@ jobs:
   deploy:
     name: Deploy to container registry
     runs-on: ubuntu-latest
-    environment:
-      name: ${{ inputs.environment }}
-      url: ${{ steps.deploy.outputs.image }}
     permissions:
       contents: read
       packages: write
@@ -79,4 +72,4 @@ jobs:
         docker tag "${IMAGE}" "${REGISTRY}/${REPO}:latest"
         docker push "${REGISTRY}/${REPO}:${TAG}"
         docker push "${REGISTRY}/${REPO}:latest"
-        echo "image=${REGISTRY}/${REPO}:${TAG}" >> "${GITHUB_OUTPUT}"
+        echo "Deployed Zwift image: ${REGISTRY}/${REPO}:${TAG}" >> "${GITHUB_STEP_SUMMARY}"
