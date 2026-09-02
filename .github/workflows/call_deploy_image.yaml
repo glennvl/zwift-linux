@@ -31,6 +31,10 @@ name: Deploy zwift image
         description: image tag
         required: true
         type: string
+    outputs:
+      image:
+        description: zwift image
+        value: ${{ jobs.deploy.outputs.image }}
     secrets:
       build-token:
         description: access token for build container registry
@@ -39,13 +43,15 @@ name: Deploy zwift image
         description: access token for deploy container registry
         required: true
 jobs:
-  build:
+  deploy:
     name: Deploy to container registry
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
       contents: read
       packages: write
+    outputs:
+      image: ${{ steps.deploy.outputs.image }}
     steps:
     - name: Login to build container registry
       uses: docker/login-action@v4
@@ -61,6 +67,7 @@ jobs:
         username: ${{ inputs.deploy-username }}
         password: ${{ secrets.deploy-token }}
     - name: Deploy image
+      id: deploy
       env:
         IMAGE: ${{ inputs.image }}
         REGISTRY: ${{ inputs.deploy-registry }}
@@ -72,3 +79,4 @@ jobs:
         docker tag "${IMAGE}" "${REGISTRY}/${REPO}:latest"
         docker push "${REGISTRY}/${REPO}:${TAG}"
         docker push "${REGISTRY}/${REPO}:latest"
+        echo "image=${REGISTRY}/${REPO}:${TAG}" >> "${GITHUB_OUTPUT}"
