@@ -1,6 +1,7 @@
 ---
 name: Prune old images
 'on':
+  pull_request: # TODO remove this trigger
   schedule:
   - cron: 0 0 * * 0 # weekly on Sundays
   workflow_dispatch:
