@@ -71,8 +71,12 @@ jobs:
         USERNAME: ${{ inputs.username }}
         TOKEN: ${{ secrets.token }}
       run: |
+        repository="$(basename "${REPO}")"
+
         (
             echo "## Github Container Registry"
+            echo ""
+            echo "Pruning images from ${USERNAME}/${repository} that are older than ${MAX_AGE_DAYS} days."
             echo ""
             echo "| Image Id | Tag | Age (days) | Status |"
             echo "|:---------|:----|-----------:|:------:|"
@@ -83,9 +87,8 @@ jobs:
             echo "| - | - | - | - |" >> "${GITHUB_STEP_SUMMARY}"
         fi
 
-        repository="$(basename "${REPO}")"
-
-        deleted=0
+        deleted_images=0
+        deleted_tags=0
         for id_age_tags in "${images_array[@]}"; do
             IFS=":" read -ra id_age_tags_array <<< "${id_age_tags}"
             image_id="${id_age_tags_array[0]}"
@@ -104,7 +107,8 @@ jobs:
                 -H "Authorization: Bearer ${TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
             )" && [[ ${http_code} -eq 204 ]]; then
-                ((deleted+="${#tags_array[@]}")) || true
+                ((deleted_images++)) || true
+                ((deleted_tags+="${#tags_array[@]}")) || true
                 status="🚫"
             else
                 echo "::warning::Failed to delete image ${image_id} from ${USERNAME}/${repository} (HTTP ${http_code})"
@@ -112,13 +116,13 @@ jobs:
             fi
 
             for tag in "${tags_array[@]}"; do
-                echo "| ${image_id} | ${USERNAME}/${repository}:${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
+                echo "| ${image_id} | ${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
             done
         done
 
         (
             echo ""
-            echo "Deleted ${deleted} tags."
+            echo "Deleted ${deleted_images} images (${deleted_tags} tags)."
             echo ""
             echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"
         ) >> "${GITHUB_STEP_SUMMARY}"
