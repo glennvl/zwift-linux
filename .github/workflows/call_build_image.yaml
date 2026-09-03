@@ -50,7 +50,7 @@ jobs:
       commit: ${{ steps.metadata.outputs.commmit }}
       image: ${{ steps.metadata.outputs.image }}:${{ steps.metadata.outputs.tag }}
       version: ${{ steps.metadata.outputs.version }}
-      updated: ${{ steps.push.outputs.updated }}
+      updated: ${{ steps.report.outputs.updated }}
     steps:
     - name: Install dependencies
       run: sudo apt-get install -y x11-xserver-utils x11-apps
@@ -140,11 +140,6 @@ jobs:
             rebuild=1
         fi
 
-        echo "Base image:    ${base_image}"
-        echo "Rebuild:       ${rebuild}"
-        echo "Zwift update:  ${update_zwift}"
-        echo "Script update: ${update_scripts}"
-
         (
             echo "rebuild=${rebuild}"
             echo "update_zwift=${update_zwift}"
@@ -153,8 +148,10 @@ jobs:
 
         (
             echo "BASE_IMAGE=${base_image}"
-            echo "UPDATED=0"
-            echo "TAGGED=0"
+            echo "NEXT_IMAGE=${base_image}"
+            echo "IMAGE_REBUILD=0"
+            echo "ZWIFT_UPDATED=0"
+            echo "SCRIPTS_UPDATED=0"
         ) >> "${GITHUB_ENV}"
     - name: Build image
       if: inputs.rebuild || steps.build_required.outputs.rebuild == '1'
@@ -194,9 +191,8 @@ jobs:
             "${IMAGE}:${TAG}"
 
         (
-            echo "BASE_IMAGE=${IMAGE}:${TAG}"
-            echo "UPDATED=1"
-            echo "TAGGED=1"
+            echo "NEXT_IMAGE=${IMAGE}:${TAG}"
+            echo "IMAGE_REBUILD=1"
         ) >> "${GITHUB_ENV}"
     - name: Update scripts
       if: steps.build_required.outputs.update_scripts == '1'
@@ -205,7 +201,7 @@ jobs:
         IMAGE: ${{ steps.metadata.outputs.image }}
         TAG: ${{ steps.metadata.outputs.tag }}
       run: |
-        docker create --name zwift-push "${BASE_IMAGE}"
+        docker create --name zwift-push "${NEXT_IMAGE}"
 
         declare -A files_map
         files_map["/bin/entrypoint"]="src/entrypoint.sh"
@@ -237,15 +233,14 @@ jobs:
                 -m "update scripts to ${COMMIT}" \
                 zwift-push \
                 "${IMAGE}:${TAG}"
-            echo "UPDATED=1" >> "${GITHUB_ENV}"
         else
             echo "Scripts are already up-to-date"
-            docker tag "${BASE_IMAGE}" "${IMAGE}:${TAG}"
+            docker tag "${NEXT_IMAGE}" "${IMAGE}:${TAG}"
         fi
 
         (
-            echo "BASE_IMAGE=${IMAGE}:${TAG}"
-            echo "TAGGED=1"
+            echo "NEXT_IMAGE=${IMAGE}:${TAG}"
+            echo "SCRIPTS_UPDATED=${has_changes}"
         ) >> "${GITHUB_ENV}"
     - name: Update Zwift
       if: steps.build_required.outputs.update_zwift == '1'
@@ -263,7 +258,7 @@ jobs:
                 --device=/dev/dri \
                 -v /tmp/.X11-unix:/tmp/.X11-unix \
                 -v \${XAUTHORITY}:\${XAUTHORITY} \
-                ${BASE_IMAGE} \
+                ${NEXT_IMAGE} \
                 --update
         "
 
@@ -277,24 +272,65 @@ jobs:
             "${IMAGE}:${TAG}"
 
         (
-            echo "BASE_IMAGE=${IMAGE}:${TAG}"
-            echo "UPDATED=1"
-            echo "TAGGED=1"
+            echo "NEXT_IMAGE=${IMAGE}:${TAG}"
+            echo "ZWIFT_UPDATED=1"
         ) >> "${GITHUB_ENV}"
     - name: Push to container registry
-      id: push
+      if: env.NEXT_IMAGE != env.BASE_IMAGE
       env:
         COMMIT: ${{ steps.metadata.outputs.commit }}
         IMAGE: ${{ steps.metadata.outputs.image }}
         TAG: ${{ steps.metadata.outputs.tag }}
       run: |
-        if [[ ${TAGGED} -eq 1 ]]; then
-            docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
-            docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
-            docker push "${IMAGE}:${TAG}"
-            docker push "${IMAGE}:${COMMIT}"
-            docker push "${IMAGE}:latest"
+        docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
+        docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
+        docker push "${IMAGE}:${TAG}"
+        docker push "${IMAGE}:${COMMIT}"
+        docker push "${IMAGE}:latest"
+    - name: Report
+      id: report
+      env:
+        COMMIT: ${{ steps.metadata.outputs.commit }}
+        IMAGE: ${{ steps.metadata.outputs.image }}
+        TAG: ${{ steps.metadata.outputs.tag }}
+        VERSION: ${{ steps.metadata.outputs.version }}
+      run: |
+        updated=0
+
+        (
+            echo "### Building image 🏗️"
+            echo ""
+        ) >> "${GITHUB_STEP_SUMMARY}"
+
+        if [[ ${IMAGE_REBUILD} -eq 1 ]]; then
+            updated=1
+            echo "Performed full rebuild" >> "${GITHUB_STEP_SUMMARY}"
+        elif [[ ${SCRIPTS_UPDATED} -eq 1 ]] || [[ ${ZWIFT_UPDATED} -eq 1 ]]; then
+            updated=1
+            echo "- Updated image ${BASE_IMAGE}" >> "${GITHUB_STEP_SUMMARY}"
+            [[ ${SCRIPTS_UPDATED} -eq 1 ]] && echo "- Updated embedded scripts" >> "${GITHUB_STEP_SUMMARY}"
+            [[ ${ZWIFT_UPDATED} -eq 1 ]] && echo "- Updated embedded Zwift to v${VERSION}" >> "${GITHUB_STEP_SUMMARY}"
         else
-            echo "Image is already up-to-date"
+            echo "No build or update required, image is already up-to-date" >> "${GITHUB_STEP_SUMMARY}"
         fi
-        echo "updated=${UPDATED}" >> "${GITHUB_OUTPUT}"
+
+        (
+            echo ""
+            echo "### Creating tags 📌"
+            echo ""
+        ) >> "${GITHUB_STEP_SUMMARY}"
+
+        if [[ ${NEXT_IMAGE} == "${BASE_IMAGE}" ]]; then
+            echo "Nothing to do, tag ${IMAGE}:${TAG} already exists" >> "${GITHUB_STEP_SUMMARY}"
+        else
+            (
+                echo "Created tags:"
+                echo ""
+                echo "- ${IMAGE}:latest"
+                echo "- ${IMAGE}:${TAG}"
+                echo "- ${IMAGE}:${COMMIT}"
+                echo ""
+            ) >> "${GITHUB_STEP_SUMMARY}"
+        fi
+
+        echo "updated=${updated}" >> "${GITHUB_OUTPUT}"
