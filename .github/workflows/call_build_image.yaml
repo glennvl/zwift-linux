@@ -297,43 +297,36 @@ jobs:
       run: |
         updated=0
 
-        (
-            echo "### Building image 🏗️"
-            echo ""
-        ) >> "${GITHUB_STEP_SUMMARY}"
+        ( echo "### Building image 🏗️"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
 
         if [[ ${IMAGE_REBUILD} -eq 1 ]]; then
             updated=1
-            echo "Performed full rebuild" >> "${GITHUB_STEP_SUMMARY}"
+            echo "Performed full rebuild!" >> "${GITHUB_STEP_SUMMARY}"
         elif [[ ${SCRIPTS_UPDATED} -eq 1 ]] || [[ ${ZWIFT_UPDATED} -eq 1 ]]; then
             updated=1
-            echo "- Updated image ${BASE_IMAGE}" >> "${GITHUB_STEP_SUMMARY}"
-            [[ ${SCRIPTS_UPDATED} -eq 1 ]] && echo "- Updated embedded scripts" >> "${GITHUB_STEP_SUMMARY}"
-            [[ ${ZWIFT_UPDATED} -eq 1 ]] && echo "- Updated embedded Zwift to v${VERSION}" >> "${GITHUB_STEP_SUMMARY}"
+            ( echo "Updated image **${BASE_IMAGE}**:"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
+            [[ ${SCRIPTS_UPDATED} -eq 1 ]] && echo "- Updated scripts" >> "${GITHUB_STEP_SUMMARY}"
+            [[ ${ZWIFT_UPDATED} -eq 1 ]] && echo "- Updated Zwift to v${VERSION}" >> "${GITHUB_STEP_SUMMARY}"
         else
             echo "No build or update required, image is already up-to-date." >> "${GITHUB_STEP_SUMMARY}"
         fi
 
-        (
-            echo ""
-            echo "### Creating tags 📌"
-            echo ""
-        ) >> "${GITHUB_STEP_SUMMARY}"
+        ( echo ""; echo "### Creating tags 📌"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
 
         if [[ ${NEXT_IMAGE} == "${BASE_IMAGE}" ]]; then
-            echo "Nothing to do, tag ${IMAGE}:${TAG} already exists." >> "${GITHUB_STEP_SUMMARY}"
+            echo "Nothing to do, tag **${IMAGE}:${TAG}** already exists." >> "${GITHUB_STEP_SUMMARY}"
         else
             if [[ ${updated} -eq 0 ]]; then
-                echo "Created additional tags for ${BASE_IMAGE}:" >> "${GITHUB_STEP_SUMMARY}"
+                echo "Created additional tags for **${BASE_IMAGE}**:" >> "${GITHUB_STEP_SUMMARY}"
             else
                 echo "Created tags:" >> "${GITHUB_STEP_SUMMARY}"
             fi
 
             (
                 echo ""
-                echo "- ${IMAGE}:latest"
-                echo "- ${IMAGE}:${TAG}"
-                echo "- ${IMAGE}:${COMMIT}"
+                echo "- *${IMAGE}:latest*"
+                echo "- *${IMAGE}:${TAG}*"
+                echo "- *${IMAGE}:${COMMIT}*"
                 echo ""
             ) >> "${GITHUB_STEP_SUMMARY}"
         fi
