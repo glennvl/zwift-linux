@@ -44,6 +44,8 @@ jobs:
     - name: Start Zwift and capture screenshot
       env:
         IMAGE: ${{ inputs.image }}
+        NUM_SCREENSHOTS: 30
+        SCREENSHOT_DELAY: 1
       run: |
         xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
             docker run \
@@ -58,22 +60,23 @@ jobs:
                 -v /tmp/.X11-unix:/tmp/.X11-unix \
                 -v \${XAUTHORITY}:\${XAUTHORITY} \
                 ${IMAGE}
-            sleep 30
-            import -window root zwift-screenshot.png
+            for i in \$(seq 1 ${NUM_SCREENSHOTS}); do
+                echo \"Taking screenshot \${i} of ${NUM_SCREENSHOTS}\"
+                import -window root zwift-screenshot-\$((i-1)).png
+                sleep ${SCREENSHOT_DELAY}
+            done
             docker kill zwift-visual-test
         "
-    - name: Upload screenshot
-      uses: actions/upload-artifact@v7
-      with:
-        path: zwift-screenshot.png
-        archive: false
     - name: Compare to reference screenshot
+      env:
+        MAX_DEVIATION: 5%
+        SCREENSHOT_INDEX: 5
       run: |
-        convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,430 625,455' reference-normalized.png
-        convert zwift-screenshot.png -draw 'rectangle 175,430 625,455' screenshot-normalized.png
+        convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,445 625,470' reference-normalized.png
+        convert "zwift-screenshot-${SCREENSHOT_INDEX}.png" -draw 'rectangle 175,445 625,470' screenshot-normalized.png
         if ! different_pixels="$(compare \
             -metric AE \
-            -fuzz 5% \
+            -fuzz "${MAX_DEVIATION}" \
             reference-normalized.png \
             screenshot-normalized.png \
             screenshot-diff.png \
@@ -84,3 +87,9 @@ jobs:
         else
             echo "Screenshot and reference image are the same, test succeeded!"
         fi
+    - name: Upload screenshots
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: zwift-screenshots
+        path: '*.png'
