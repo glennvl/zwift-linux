@@ -70,7 +70,7 @@ jobs:
     - name: Compare to reference screenshot
       env:
         MAX_DEVIATION: 5%
-        SCREENSHOT_INDEX: 5
+        SCREENSHOT_INDEX: 15
       run: |
         convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,445 625,470' reference-normalized.png
         convert "zwift-screenshot-${SCREENSHOT_INDEX}.png" -draw 'rectangle 175,445 625,470' screenshot-normalized.png
