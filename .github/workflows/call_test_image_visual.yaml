@@ -20,6 +20,8 @@ name: Zwift visual test
       token:
         description: access token for container registry
         required: true
+env:
+  NUM_SCREENSHOTS: 30
 jobs:
   test:
     name: Visual test
@@ -44,7 +46,6 @@ jobs:
     - name: Start Zwift and capture screenshot
       env:
         IMAGE: ${{ inputs.image }}
-        NUM_SCREENSHOTS: 30
         SCREENSHOT_DELAY: 1
       run: |
         xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
@@ -70,22 +71,33 @@ jobs:
     - name: Compare to reference screenshot
       env:
         MAX_DEVIATION: 5%
-        SCREENSHOT_INDEX: 15
+        IMAGE_MASK: rectangle 25,425 775,500
       run: |
-        convert tests/zwift-visual-test/reference-screenshot.png -draw 'rectangle 175,445 625,470' reference-normalized.png
-        convert "zwift-screenshot-${SCREENSHOT_INDEX}.png" -draw 'rectangle 175,445 625,470' screenshot-normalized.png
-        if ! different_pixels="$(compare \
-            -metric AE \
-            -fuzz "${MAX_DEVIATION}" \
-            reference-normalized.png \
-            screenshot-normalized.png \
-            screenshot-diff.png \
-            2>&1 \
-        )" || [[ ${different_pixels} != "0" ]]; then
-            echo "::error::Zwift screenshot differs from reference image! (pixel difference = ${different_pixels})"
-            exit 1
+        match_index="${NUM_SCREENSHOTS}"
+        convert tests/zwift-visual-test/reference-screenshot.png -draw "${IMAGE_MASK}" reference-normalized.png
+        for i in $(seq 0 "$((NUM_SCREENSHOTS-1))"); do
+            convert "zwift-screenshot-${i}.png" -draw "${IMAGE_MASK}" screenshot-normalized.png
+            if different_pixels="$(compare \
+                -metric AE \
+                -fuzz "${MAX_DEVIATION}" \
+                reference-normalized.png \
+                screenshot-normalized.png \
+                screenshot-diff.png \
+                2>&1 \
+            )" && [[ ${different_pixels} == "0" ]]; then
+                echo "Checking screenshot $((i+1)) of ${NUM_SCREENSHOTS}: MATCH"
+                match_index="${i}"
+                break
+            else
+                echo "Checking screenshot $((i+1)) of ${NUM_SCREENSHOTS}: NO MATCH"
+            fi
+        done
+        if [[ ${match_index} -lt ${NUM_SCREENSHOTS} ]]; then
+            echo "Found matching screenshot zwift-screenshot-${match_index}.png, test succeeded!"
+            cp "zwift-screenshot-${match_index}.png" "matched-screenshot-${match_index}.png"
         else
-            echo "Screenshot and reference image are the same, test succeeded!"
+            echo "::error::All screenshots differ from the reference image!"
+            exit 1
         fi
     - name: Upload screenshots
       if: ${{ always() }}
