@@ -89,8 +89,6 @@ jobs:
         REPO: ${{ inputs.repository }}
       run: |
         (
-            echo "## Docker Hub"
-            echo ""
             echo "Pruning tags from ${REPO} that are older than ${MAX_AGE_DAYS} days."
             echo ""
             echo "| Tag | Age (days) | Status |"
@@ -130,7 +128,7 @@ jobs:
 
         (
             echo ""
-            echo "Deleted ${deleted} tags."
-            echo ""
             echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"
+            echo ""
+            echo "Deleted ${deleted} tags."
         ) >> "${GITHUB_STEP_SUMMARY}"
