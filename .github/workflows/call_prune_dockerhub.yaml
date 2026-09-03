@@ -91,6 +91,8 @@ jobs:
         (
             echo "## Docker Hub"
             echo ""
+            echo "Pruning tags from ${REPO} that are older than ${MAX_AGE_DAYS} days."
+            echo ""
             echo "| Tag | Age (days) | Status |"
             echo "|:----|-----------:|:------:|"
         ) >> "${GITHUB_STEP_SUMMARY}"
@@ -123,7 +125,7 @@ jobs:
                 status="⚠️"
             fi
 
-            echo "| ${REPO}:${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
+            echo "| ${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
         done
 
         (
