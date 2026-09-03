@@ -74,8 +74,6 @@ jobs:
         repository="$(basename "${REPO}")"
 
         (
-            echo "## Github Container Registry"
-            echo ""
             echo "Pruning images from ${USERNAME}/${repository} that are older than ${MAX_AGE_DAYS} days."
             echo ""
             echo "| Image Id | Tag | Age (days) | Status |"
@@ -122,7 +120,7 @@ jobs:
 
         (
             echo ""
-            echo "Deleted ${deleted_images} images (${deleted_tags} tags)."
-            echo ""
             echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"
+            echo ""
+            echo "Deleted ${deleted_images} images (${deleted_tags} tags)."
         ) >> "${GITHUB_STEP_SUMMARY}"
