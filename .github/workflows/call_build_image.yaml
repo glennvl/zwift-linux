@@ -311,7 +311,7 @@ jobs:
             [[ ${SCRIPTS_UPDATED} -eq 1 ]] && echo "- Updated embedded scripts" >> "${GITHUB_STEP_SUMMARY}"
             [[ ${ZWIFT_UPDATED} -eq 1 ]] && echo "- Updated embedded Zwift to v${VERSION}" >> "${GITHUB_STEP_SUMMARY}"
         else
-            echo "No build or update required, image is already up-to-date" >> "${GITHUB_STEP_SUMMARY}"
+            echo "No build or update required, image is already up-to-date." >> "${GITHUB_STEP_SUMMARY}"
         fi
 
         (
@@ -321,10 +321,15 @@ jobs:
         ) >> "${GITHUB_STEP_SUMMARY}"
 
         if [[ ${NEXT_IMAGE} == "${BASE_IMAGE}" ]]; then
-            echo "Nothing to do, tag ${IMAGE}:${TAG} already exists" >> "${GITHUB_STEP_SUMMARY}"
+            echo "Nothing to do, tag ${IMAGE}:${TAG} already exists." >> "${GITHUB_STEP_SUMMARY}"
         else
+            if [[ ${updated} -eq 0 ]]; then
+                echo "Created additional tags for ${BASE_IMAGE}:" >> "${GITHUB_STEP_SUMMARY}"
+            else
+                echo "Created tags:" >> "${GITHUB_STEP_SUMMARY}"
+            fi
+
             (
-                echo "Created tags:"
                 echo ""
                 echo "- ${IMAGE}:latest"
                 echo "- ${IMAGE}:${TAG}"
