@@ -1,19 +1,32 @@
 ---
+# yamllint disable rule:quoted-strings
 version: 2
 updates:
 - package-ecosystem: bundler
   directory: /docs
   schedule:
     interval: weekly
+    day: sunday
+    time: '05:00'
+    timezone: UTC
 - package-ecosystem: docker
   directory: /src
   schedule:
     interval: weekly
+    day: sunday
+    time: '05:00'
+    timezone: UTC
 - package-ecosystem: github-actions
   directory: /
   schedule:
     interval: weekly
+    day: sunday
+    time: '05:00'
+    timezone: UTC
 - package-ecosystem: nix
   directory: /
   schedule:
     interval: weekly
+    day: sunday
+    time: '05:00'
+    timezone: UTC
