@@ -2,7 +2,7 @@
 name: Prune old images
 'on':
   schedule:
-  - cron: 0 0 * * 0 # weekly on Sundays
+  - cron: 47 2 * * 0 # on Sundays, at 02:47
   workflow_dispatch:
     inputs:
       dry-run:

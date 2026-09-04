@@ -6,8 +6,8 @@ name: Build 🡺 Test 🡺 Deploy
     branches:
     - master
   schedule:
-  - cron: 0 0 1 */3 * # on the first at 00:00 every three months
-  - cron: 0 * * * * # every hour
+  - cron: 37 3 1 */3 * # every three months, on the first day at 03:37
+  - cron: 7 * * * * # every hour at xx:07
   workflow_dispatch:
     inputs:
       rebuild:
@@ -24,7 +24,7 @@ jobs:
     with:
       registry: ghcr.io
       repository: ${{ github.repository }}
-      rebuild: ${{ ( github.event_name == 'schedule' && github.event.schedule == '0 0 1 */3 *' ) || ( github.event_name ==
+      rebuild: ${{ ( github.event_name == 'schedule' && github.event.schedule == '37 3 1 */3 *' ) || ( github.event_name ==
         'workflow_dispatch' && inputs.rebuild ) }}
   test:
     name: Test
