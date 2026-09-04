@@ -21,7 +21,10 @@ name: Zwift visual test
         description: access token for container registry
         required: true
 env:
+  IMAGE_MASK: rectangle 25,425 775,500
+  MAX_DEVIATION: 5%
   NUM_SCREENSHOTS: 30
+  SCREENSHOT_DELAY: 1
 jobs:
   test:
     name: Visual test
@@ -46,7 +49,6 @@ jobs:
     - name: Start Zwift and capture screenshot
       env:
         IMAGE: ${{ inputs.image }}
-        SCREENSHOT_DELAY: 1
       run: |
         xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
             docker run \
@@ -69,9 +71,6 @@ jobs:
             docker kill zwift-visual-test || echo \"::warning::Zwift container crashed!\"
         "
     - name: Compare to reference screenshot
-      env:
-        MAX_DEVIATION: 5%
-        IMAGE_MASK: rectangle 25,425 775,500
       run: |
         match_index="${NUM_SCREENSHOTS}"
         convert tests/zwift-visual-test/reference-screenshot.png -draw "${IMAGE_MASK}" reference-normalized.png
