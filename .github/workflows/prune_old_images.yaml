@@ -19,7 +19,7 @@ jobs:
       keep-latest: true
       max-age: 365
       repository: ${{ github.repository }}
-      username: vars.DOCKERHUB_USERNAME
+      username: ${{ vars.DOCKERHUB_USERNAME }}
     secrets:
       token: secrets.DOCKERHUB_TOKEN
   prune-ghcr:
