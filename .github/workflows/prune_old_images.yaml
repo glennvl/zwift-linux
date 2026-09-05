@@ -9,6 +9,8 @@ name: Prune old images
         description: list which tags would be pruned
         required: true
         type: boolean
+concurrency:
+  group: prune
 jobs:
   prune-dockerhub:
     name: docker.io
