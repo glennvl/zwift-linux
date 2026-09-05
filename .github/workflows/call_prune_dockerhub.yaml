@@ -1,0 +1,134 @@
+---
+name: Prune images on docker.io
+'on':
+  workflow_call:
+    inputs:
+      dry-run:
+        description: list which tags would be pruned
+        default: false
+        required: false
+        type: boolean
+      keep-latest:
+        description: never delete latest tag
+        default: true
+        required: false
+        type: boolean
+      max-age:
+        description: prune images older that max age days
+        required: true
+        type: number
+      repository:
+        description: repository to prune
+        required: true
+        type: string
+      username:
+        description: username for docker hub
+        required: true
+        type: string
+    secrets:
+      token:
+        description: access token for docker hub
+        required: true
+jobs:
+  prune:
+    name: Prune
+    runs-on: ubuntu-latest
+    steps:
+    - name: Login to docker hub
+      if: ${{ ! inputs.dry-run }}
+      env:
+        USERNAME: ${{ inputs.username }}
+        TOKEN: ${{ secrets.token }}
+      run: |
+        token="$(curl -sf -X POST "https://hub.docker.com/v2/users/login" \
+            -H "Content-Type: application/json" \
+            -d "{\"username\":\"${USERNAME}\",\"password\":\"${TOKEN}\"}" \
+            | jq -r '.token')"
+
+        if [[ -z ${token} ]] || [[ ${token} == "null" ]]; then
+            echo "::error::Failed to authenticate with docker hub"
+            exit 1
+        fi
+
+        echo "JWT_TOKEN=${token}" >> "${GITHUB_ENV}"
+    - name: Collect tags
+      env:
+        REPO: ${{ inputs.repository }}
+      run: |
+        page_size=100
+        page=1
+        today="$(date +%F)"
+
+        declare -a tags_array=()
+
+        while true; do
+            response="$(curl -sf "https://hub.docker.com/v2/repositories/${REPO}/tags/?page_size=${page_size}&page=${page}")"
+            tags="$(jq -r '.results // []' <<< "${response}")"
+            count="$(jq 'length' <<< "${tags}")"
+            [[ ${count} -eq 0 ]] && break
+
+            for i in $(seq 0 $((count - 1))); do
+                tag="$(jq -r ".[${i}].name" <<< "${tags}")"
+                last_updated="$(jq -r ".[${i}].last_updated" <<< "${tags}")"
+                last_updated_day="$(date -ud "${last_updated}" +%F)"
+                tag_age_days=$((($(date -d "${today}" +%s) - $(date -d "${last_updated_day}" +%s)) / 86400))
+                tags_array+=("${tag}:${tag_age_days}")
+            done
+
+            next="$(jq -r '.next // empty' <<< "${response}")"
+            [[ -z ${next} ]] && break
+            ((page++)) || true
+        done
+
+        echo "TAGS=${tags_array[*]}" >> "${GITHUB_ENV}"
+    - name: Prune old tags
+      env:
+        DRYRUN: ${{ inputs.dry-run }}
+        KEEP_LATEST: ${{ inputs.keep-latest }}
+        MAX_AGE_DAYS: ${{ inputs.max-age }}
+        REPO: ${{ inputs.repository }}
+      run: |
+        (
+            echo "Pruning tags from ${REPO} that are older than ${MAX_AGE_DAYS} days."
+            echo ""
+            echo "| Tag | Age (days) | Status |"
+            echo "|:----|-----------:|:------:|"
+        ) >> "${GITHUB_STEP_SUMMARY}"
+
+        IFS=" " read -ra tags_array <<< "${TAGS}"
+        if [[ ${#tags_array[@]} -eq 0 ]]; then
+            echo "| - | - | - |" >> "${GITHUB_STEP_SUMMARY}"
+        fi
+
+        deleted=0
+        for tag_age in "${tags_array[@]}"; do
+            IFS=":" read -ra tag_age_array <<< "${tag_age}"
+            tag="${tag_age_array[0]}"
+            age="${tag_age_array[1]}"
+
+            if [[ ${KEEP_LATEST} == "true" ]] && [[ ${tag} == "latest" ]]; then
+                status="🔒"
+            elif [[ ${age} -le ${MAX_AGE_DAYS} ]]; then
+                status="✔️"
+            elif [[ ${DRYRUN} == "true" ]]; then
+                status="🚫"
+            elif http_code="$(curl -so /dev/null -w "%{http_code}" -X delete \
+                "https://hub.docker.com/v2/repositories/${REPO}/tags/${tag}/" \
+                -H "Authorization: Bearer ${JWT_TOKEN}" \
+            )" && [[ ${http_code} -eq 204 ]]; then
+                ((deleted++)) || true
+                status="🚫"
+            else
+                echo "::warning::Failed to delete ${REPO}:${tag} (HTTP ${http_code})"
+                status="⚠️"
+            fi
+
+            echo "| ${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
+        done
+
+        (
+            echo ""
+            echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"
+            echo ""
+            echo "Deleted ${deleted} tags."
+        ) >> "${GITHUB_STEP_SUMMARY}"

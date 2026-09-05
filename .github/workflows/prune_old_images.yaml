@@ -1,0 +1,37 @@
+---
+name: Prune old images
+'on':
+  schedule:
+  - cron: 0 0 * * 0 # weekly on Sundays
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: list which tags would be pruned
+        required: true
+        type: boolean
+concurrency:
+  group: prune
+jobs:
+  prune-dockerhub:
+    name: docker.io
+    if: github.repository == 'netbrain/zwift'
+    uses: ./.github/workflows/call_prune_dockerhub.yaml
+    with:
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      keep-latest: true
+      max-age: 365
+      repository: ${{ github.repository }}
+      username: ${{ vars.DOCKERHUB_USERNAME }}
+    secrets:
+      token: secrets.DOCKERHUB_TOKEN
+  prune-ghcr:
+    name: ghcr.io
+    uses: ./.github/workflows/call_prune_ghcr.yaml
+    with:
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      keep-latest: true
+      max-age: 30
+      repository: ${{ github.repository }}
+      username: ${{ github.actor }}
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}

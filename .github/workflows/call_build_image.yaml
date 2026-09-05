@@ -1,0 +1,305 @@
+---
+name: Build zwift image
+'on':
+  workflow_call:
+    inputs:
+      repository:
+        description: github repository
+        required: true
+        type: string
+      registry:
+        description: container registry
+        default: ghcr.io
+        required: false
+        type: string
+      username:
+        description: username for container registry
+        required: true
+        type: string
+      rebuild:
+        description: rebuild the image even if not needed
+        default: false
+        required: false
+        type: boolean
+    outputs:
+      commit:
+        description: commit from which image is built
+        value: ${{ jobs.build.outputs.commit }}
+      image:
+        description: zwift image
+        value: ${{ jobs.build.outputs.image }}
+      updated:
+        description: was the image updated
+        value: ${{ jobs.build.outputs.updated }}
+      version:
+        description: bundled zwift version
+        value: ${{ jobs.build.outputs.version }}
+    secrets:
+      token:
+        description: access token for container registry
+        required: true
+jobs:
+  build:
+    name: Build if needed
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      commit: ${{ steps.report.outputs.commmit }}
+      image: ${{ steps.report.outputs.image }}
+      updated: ${{ steps.report.outputs.updated }}
+      version: ${{ steps.report.outputs.version }}
+    steps:
+    - name: Install dependencies
+      run: sudo apt-get install -y x11-xserver-utils x11-apps
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Login to container registry
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ inputs.registry }}
+        username: ${{ inputs.username }}
+        password: ${{ secrets.token }}
+    - name: Gather metadata
+      env:
+        REGISTRY: ${{ inputs.registry }}
+        USERNAME: ${{ inputs.username }}
+        REPO: ${{ inputs.repository }}
+        ZWIFT_VERSION_URL: https://cdn.zwift.com/gameassets/Zwift_Updates_Root/Zwift_ver_cur.xml
+      run: |
+        commit="$(git rev-parse HEAD)"
+        dockerfile="$(git rev-parse HEAD:src/Dockerfile)"
+        version="$(curl -s "${ZWIFT_VERSION_URL}" | grep -oP 'sversion="\K.*?(?=")' | cut -f 1 -d ' ')"
+        image="${REGISTRY}/${REPO}"
+        tag="${version}_${commit}"
+
+        echo "Zwift version: ${version}"
+        echo "Commit hash:   ${commit}"
+
+        (
+            echo "COMMIT=${commit}"
+            echo "DOCKERFILE=${dockerfile}"
+            echo "IMAGE=${image}"
+            echo "TAG=${tag}"
+            echo "VERSION=${version}"
+        ) >> "${GITHUB_ENV}"
+    - name: Check build required
+      run: |
+        base_image="${IMAGE}:${TAG}"
+        rebuild=0
+        update_zwift=0
+        update_scripts=0
+
+        if docker manifest inspect "${IMAGE}:${TAG}" > /dev/null 2>&1; then
+            echo "${IMAGE} is already up-to-date"
+        elif docker pull "${IMAGE}:${COMMIT}" > /dev/null 2>&1; then
+            echo "Using image for commit as base image"
+            base_image="${IMAGE}:${COMMIT}"
+            update_zwift=1
+        elif docker pull "${IMAGE}:${DOCKERFILE}" > /dev/null 2>&1; then
+            echo "Using image for dockerfile as base image"
+            base_image="${IMAGE}:${DOCKERFILE}"
+            update_scripts=1
+            if ! embedded_zwift="$(docker inspect \
+                --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
+                "${base_image}" \
+            )" || [[ ${embedded_zwift} != "${VERSION}" ]]; then
+                update_zwift=1
+            fi
+        elif docker pull "${IMAGE}:latest" > /dev/null 2>&1; then
+            echo "Using latest image as base image"
+            base_image="${IMAGE}:latest"
+            if ! embedded_dockerfile="$(docker inspect \
+                --format '{{ index .Config.Labels "io.github.netbrain.zwift.dockerfile" }}' \
+                "${base_image}" \
+            )" || [[ ${embedded_dockerfile} != "${DOCKERFILE}" ]]; then
+                rebuild=1
+            elif ! embedded_zwift="$(docker inspect \
+                --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
+                "${base_image}" \
+            )" || [[ ${embedded_zwift} != "${VERSION}" ]]; then
+                update_scripts=1
+                update_zwift=1
+            else
+                update_scripts=1
+            fi
+        else
+            echo "No suitable base image found, build from scratch"
+            base_image=""
+            rebuild=1
+        fi
+
+        (
+            echo "REBUILD=${rebuild}"
+            echo "UPDATE_ZWIFT=${update_zwift}"
+            echo "UPDATE_SCRIPTS=${update_scripts}"
+            echo "BASE_IMAGE=${base_image}"
+            echo "NEXT_IMAGE=${base_image}"
+            echo "IMAGE_REBUILT=0"
+            echo "ZWIFT_UPDATED=0"
+            echo "SCRIPTS_UPDATED=0"
+        ) >> "${GITHUB_ENV}"
+    - name: Build image
+      if: inputs.rebuild || env.REBUILD == '1'
+      env:
+        REPO: ${{ inputs.repository }}
+      run: |
+        docker build -t "${IMAGE}:build" src/
+
+        xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
+            docker run \
+                --name zwift-build \
+                -e DISPLAY=\${DISPLAY} \
+                -e XAUTHORITY=\${XAUTHORITY} \
+                -e CONTAINER_TOOL=docker \
+                --device=/dev/dri \
+                -v /tmp/.X11-unix:/tmp/.X11-unix \
+                -v \${XAUTHORITY}:\${XAUTHORITY} \
+                ${IMAGE}:build \
+                --install
+        "
+
+        build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        docker commit \
+            --change="LABEL org.opencontainers.image.created=${build_date}" \
+            --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
+            --change="LABEL org.opencontainers.image.version=${VERSION}" \
+            --change="LABEL org.opencontainers.image.source=https://github.com/${REPO}" \
+            --change="LABEL io.github.netbrain.zwift.dockerfile=${DOCKERFILE}" \
+            --change='CMD [""]' \
+            -m "build from zwift ${VERSION} and commit ${COMMIT}" \
+            zwift-build \
+            "${IMAGE}:${TAG}"
+
+        (
+            echo "NEXT_IMAGE=${IMAGE}:${TAG}"
+            echo "IMAGE_REBUILT=1"
+        ) >> "${GITHUB_ENV}"
+    - name: Update scripts
+      if: env.UPDATE_SCRIPTS == '1'
+      run: |
+        docker create --name zwift-push "${NEXT_IMAGE}"
+
+        declare -A files_map
+        files_map["/bin/entrypoint"]="src/entrypoint.sh"
+        files_map["/bin/zwift-auth"]="src/zwift-auth.sh"
+        files_map["/bin/update_zwift.sh"]="src/update_zwift.sh"
+        files_map["/bin/run_zwift.sh"]="src/run_zwift.sh"
+
+        has_changes=0
+        for container_path in "${!files_map[@]}"; do
+            local_file="${files_map[${container_path}]}"
+            mkdir -p "$(dirname "/tmp/${local_file}")"
+            docker cp "zwift-push:${container_path}" "/tmp/${local_file}"
+            diff "${local_file}" "/tmp/${local_file}" > /dev/null || {
+                if [[ ${?} -eq 1 ]]; then
+                    has_changes=1
+                    docker cp "${local_file}" "zwift-push:${container_path}"
+                else
+                    echo "::error::Failed to diff '${local_file}'"
+                    exit 1
+                fi
+            }
+        done
+
+        if [[ ${has_changes} -eq 1 ]]; then
+            build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+            docker commit \
+                --change="LABEL org.opencontainers.image.created=${build_date}" \
+                --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
+                -m "update scripts to ${COMMIT}" \
+                zwift-push \
+                "${IMAGE}:${TAG}"
+        else
+            echo "Scripts are already up-to-date"
+            docker tag "${NEXT_IMAGE}" "${IMAGE}:${TAG}"
+        fi
+
+        (
+            echo "NEXT_IMAGE=${IMAGE}:${TAG}"
+            echo "SCRIPTS_UPDATED=${has_changes}"
+        ) >> "${GITHUB_ENV}"
+    - name: Update Zwift
+      if: env.UPDATE_ZWIFT == '1'
+      run: |
+        xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
+            docker run \
+                --name zwift-update \
+                -e DISPLAY=\${DISPLAY} \
+                -e XAUTHORITY=\${XAUTHORITY} \
+                -e CONTAINER_TOOL=docker \
+                --device=/dev/dri \
+                -v /tmp/.X11-unix:/tmp/.X11-unix \
+                -v \${XAUTHORITY}:\${XAUTHORITY} \
+                ${NEXT_IMAGE} \
+                --update
+        "
+
+        build_date="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+        docker commit \
+            --change="LABEL org.opencontainers.image.created=${build_date}" \
+            --change="LABEL org.opencontainers.image.version=${VERSION}" \
+            --change='CMD [""]' \
+            -m "update zwift to ${VERSION}" \
+            zwift-update \
+            "${IMAGE}:${TAG}"
+
+        (
+            echo "NEXT_IMAGE=${IMAGE}:${TAG}"
+            echo "ZWIFT_UPDATED=1"
+        ) >> "${GITHUB_ENV}"
+    - name: Push to container registry
+      if: env.NEXT_IMAGE != env.BASE_IMAGE
+      run: |
+        docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
+        docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
+        docker push "${IMAGE}:${TAG}"
+        docker push "${IMAGE}:${COMMIT}"
+        docker push "${IMAGE}:latest"
+    - name: Report
+      id: report
+      run: |
+        updated=0
+
+        ( echo "### Building image 🏗️"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
+
+        if [[ ${IMAGE_REBUILT} -eq 1 ]]; then
+            updated=1
+            echo "Performed full rebuild!" >> "${GITHUB_STEP_SUMMARY}"
+        elif [[ ${SCRIPTS_UPDATED} -eq 1 ]] || [[ ${ZWIFT_UPDATED} -eq 1 ]]; then
+            updated=1
+            ( echo "Updated image **${BASE_IMAGE}**:"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
+            [[ ${SCRIPTS_UPDATED} -eq 1 ]] && echo "- Updated scripts" >> "${GITHUB_STEP_SUMMARY}"
+            [[ ${ZWIFT_UPDATED} -eq 1 ]] && echo "- Updated Zwift to v${VERSION}" >> "${GITHUB_STEP_SUMMARY}"
+        else
+            echo "No build or update required, image is already up-to-date." >> "${GITHUB_STEP_SUMMARY}"
+        fi
+
+        ( echo ""; echo "### Creating tags 📌"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
+
+        if [[ ${NEXT_IMAGE} == "${BASE_IMAGE}" ]]; then
+            echo "Nothing to do, tag **${IMAGE}:${TAG}** already exists." >> "${GITHUB_STEP_SUMMARY}"
+        else
+            if [[ ${updated} -eq 0 ]]; then
+                echo "Created additional tags for **${BASE_IMAGE}**:" >> "${GITHUB_STEP_SUMMARY}"
+            else
+                echo "Created tags:" >> "${GITHUB_STEP_SUMMARY}"
+            fi
+
+            (
+                echo ""
+                echo "- *${IMAGE}:latest*"
+                echo "- *${IMAGE}:${TAG}*"
+                echo "- *${IMAGE}:${COMMIT}*"
+                echo ""
+            ) >> "${GITHUB_STEP_SUMMARY}"
+        fi
+
+        (
+            echo "commit=${COMMIT}"
+            echo "image=${IMAGE}:${TAG}"
+            echo "updated=${updated}"
+            echo "version=${VERSION}"
+        ) >> "${GITHUB_OUTPUT}"

@@ -1,0 +1,63 @@
+---
+name: Build 🡺 Test 🡺 Deploy
+'on':
+  pull_request:
+  push:
+    branches:
+    - master
+  schedule:
+  - cron: 0 0 1 */3 * # on the first at 00:00 every three months
+  - cron: 0 * * * * # every hour
+  workflow_dispatch:
+    inputs:
+      rebuild:
+        description: rebuild the image even if not needed
+        required: true
+        type: boolean
+jobs:
+  build:
+    name: Build
+    concurrency:
+      group: build
+      queue: max
+    uses: ./.github/workflows/call_build_image.yaml
+    with:
+      rebuild: ${{ ( github.event_name == 'schedule' && github.event.schedule == '0 0 1 */3 *' ) || ( github.event_name ==
+        'workflow_dispatch' && inputs.rebuild ) }}
+      registry: ghcr.io
+      repository: ${{ github.repository }}
+      username: ${{ github.actor }}
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+  test:
+    name: Test
+    if: github.event_name != 'schedule' || needs.build.outputs.updated == '1'
+    needs: build
+    uses: ./.github/workflows/call_test_image_visual.yaml
+    with:
+      image: ${{ needs.build.outputs.image }}
+      registry: ghcr.io
+      username: ${{ github.actor }}
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
+  deploy:
+    name: Deploy
+    if: github.repository == 'netbrain/zwift' && github.event_name != 'pull_request' && needs.build.outputs.updated == '1'
+    needs:
+    - build
+    - test
+    concurrency:
+      group: deploy
+      cancel-in-progress: true
+    uses: ./.github/workflows/call_deploy_image.yaml
+    with:
+      build-registry: ghcr.io
+      build-username: ${{ github.actor }}
+      deploy-registry: docker.io
+      deploy-username: ${{ vars.DOCKERHUB_USERNAME }}
+      image: ${{ needs.build.outputs.image }}
+      repository: ${{ github.repository }}
+      tag: ${{ needs.build.outputs.version }}
+    secrets:
+      build-token: ${{ secrets.GITHUB_TOKEN }}
+      deploy-token: ${{ secrets.DOCKERHUB_TOKEN }}

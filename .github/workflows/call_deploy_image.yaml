@@ -1,0 +1,75 @@
+---
+name: Deploy zwift image
+'on':
+  workflow_call:
+    inputs:
+      build-registry:
+        description: build container registry
+        required: true
+        type: string
+      build-username:
+        description: username for build container registry
+        required: true
+        type: string
+      deploy-registry:
+        description: deploy container registry
+        required: true
+        type: string
+      deploy-username:
+        description: username for deploy container registry
+        required: true
+        type: string
+      image:
+        description: image to deploy
+        required: true
+        type: string
+      repository:
+        description: repository to deploy to
+        required: true
+        type: string
+      tag:
+        description: image tag
+        required: true
+        type: string
+    secrets:
+      build-token:
+        description: access token for build container registry
+        required: true
+      deploy-token:
+        description: access token for deploy container registry
+        required: true
+jobs:
+  deploy:
+    name: Deploy to container registry
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: Login to build container registry
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ inputs.build-registry }}
+        username: ${{ inputs.build-username }}
+        password: ${{ secrets.build-token }}
+    - name: Login to deploy container registry
+      if: inputs.build-registry != inputs.deploy-registry
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ inputs.deploy-registry }}
+        username: ${{ inputs.deploy-username }}
+        password: ${{ secrets.deploy-token }}
+    - name: Deploy image
+      id: deploy
+      env:
+        IMAGE: ${{ inputs.image }}
+        REGISTRY: ${{ inputs.deploy-registry }}
+        REPO: ${{ inputs.repository }}
+        TAG: ${{ inputs.tag }}
+      run: |
+        docker pull "${IMAGE}"
+        docker tag "${IMAGE}" "${REGISTRY}/${REPO}:${TAG}"
+        docker tag "${IMAGE}" "${REGISTRY}/${REPO}:latest"
+        docker push "${REGISTRY}/${REPO}:${TAG}"
+        docker push "${REGISTRY}/${REPO}:latest"
+        echo "Deployed Zwift image: ${REGISTRY}/${REPO}:${TAG}" >> "${GITHUB_STEP_SUMMARY}"
