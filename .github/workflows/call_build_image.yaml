@@ -47,10 +47,10 @@ jobs:
       contents: read
       packages: write
     outputs:
-      commit: ${{ steps.metadata.outputs.commmit }}
-      image: ${{ steps.metadata.outputs.image }}:${{ steps.metadata.outputs.tag }}
-      version: ${{ steps.metadata.outputs.version }}
+      commit: ${{ steps.report.outputs.commmit }}
+      image: ${{ steps.report.outputs.image }}
       updated: ${{ steps.report.outputs.updated }}
+      version: ${{ steps.report.outputs.version }}
     steps:
     - name: Install dependencies
       run: sudo apt-get install -y x11-xserver-utils x11-apps
@@ -63,7 +63,6 @@ jobs:
         username: ${{ inputs.username }}
         password: ${{ secrets.token }}
     - name: Gather metadata
-      id: metadata
       env:
         REGISTRY: ${{ inputs.registry }}
         USERNAME: ${{ inputs.username }}
@@ -80,21 +79,13 @@ jobs:
         echo "Commit hash:   ${commit}"
 
         (
-            echo "commit=${commit}"
-            echo "dockerfile=${dockerfile}"
-            echo "image=${image}"
-            echo "tag=${tag}"
-            echo "version=${version}"
-        ) >> "${GITHUB_OUTPUT}"
+            echo "COMMIT=${commit}"
+            echo "DOCKERFILE=${dockerfile}"
+            echo "IMAGE=${image}"
+            echo "TAG=${tag}"
+            echo "VERSION=${version}"
+        ) >> "${GITHUB_ENV}"
     - name: Check build required
-      id: build_required
-      env:
-        COMMIT: ${{ steps.metadata.outputs.commit }}
-        DOCKERFILE: ${{ steps.metadata.outputs.dockerfile }}
-        IMAGE: ${{ steps.metadata.outputs.image }}
-        TAG: ${{ steps.metadata.outputs.tag }}
-        VERSION: ${{ steps.metadata.outputs.version }}
-        REPO: ${{ inputs.repository }}
       run: |
         base_image="${IMAGE}:${TAG}"
         rebuild=0
@@ -102,7 +93,7 @@ jobs:
         update_scripts=0
 
         if docker manifest inspect "${IMAGE}:${TAG}" > /dev/null 2>&1; then
-            echo "${REPO} is already up-to-date"
+            echo "${IMAGE} is already up-to-date"
         elif docker pull "${IMAGE}:${COMMIT}" > /dev/null 2>&1; then
             echo "Using image for commit as base image"
             base_image="${IMAGE}:${COMMIT}"
@@ -141,26 +132,18 @@ jobs:
         fi
 
         (
-            echo "rebuild=${rebuild}"
-            echo "update_zwift=${update_zwift}"
-            echo "update_scripts=${update_scripts}"
-        ) >> "${GITHUB_OUTPUT}"
-
-        (
+            echo "REBUILD=${rebuild}"
+            echo "UPDATE_ZWIFT=${update_zwift}"
+            echo "UPDATE_SCRIPTS=${update_scripts}"
             echo "BASE_IMAGE=${base_image}"
             echo "NEXT_IMAGE=${base_image}"
-            echo "IMAGE_REBUILD=0"
+            echo "IMAGE_REBUILT=0"
             echo "ZWIFT_UPDATED=0"
             echo "SCRIPTS_UPDATED=0"
         ) >> "${GITHUB_ENV}"
     - name: Build image
-      if: inputs.rebuild || steps.build_required.outputs.rebuild == '1'
+      if: inputs.rebuild || env.REBUILD == '1'
       env:
-        COMMIT: ${{ steps.metadata.outputs.commit }}
-        DOCKERFILE: ${{ steps.metadata.outputs.dockerfile }}
-        IMAGE: ${{ steps.metadata.outputs.image }}
-        TAG: ${{ steps.metadata.outputs.tag }}
-        VERSION: ${{ steps.metadata.outputs.version }}
         REPO: ${{ inputs.repository }}
       run: |
         docker build -t "${IMAGE}:build" src/
@@ -183,7 +166,7 @@ jobs:
             --change="LABEL org.opencontainers.image.created=${build_date}" \
             --change="LABEL org.opencontainers.image.revision=${COMMIT}" \
             --change="LABEL org.opencontainers.image.version=${VERSION}" \
-            --change="LABEL org.opencontainers.image.source=https://github.com/${REPOSITORY}" \
+            --change="LABEL org.opencontainers.image.source=https://github.com/${REPO}" \
             --change="LABEL io.github.netbrain.zwift.dockerfile=${DOCKERFILE}" \
             --change='CMD [""]' \
             -m "build from zwift ${VERSION} and commit ${COMMIT}" \
@@ -192,14 +175,10 @@ jobs:
 
         (
             echo "NEXT_IMAGE=${IMAGE}:${TAG}"
-            echo "IMAGE_REBUILD=1"
+            echo "IMAGE_REBUILT=1"
         ) >> "${GITHUB_ENV}"
     - name: Update scripts
-      if: steps.build_required.outputs.update_scripts == '1'
-      env:
-        COMMIT: ${{ steps.metadata.outputs.commit }}
-        IMAGE: ${{ steps.metadata.outputs.image }}
-        TAG: ${{ steps.metadata.outputs.tag }}
+      if: env.UPDATE_SCRIPTS == '1'
       run: |
         docker create --name zwift-push "${NEXT_IMAGE}"
 
@@ -243,11 +222,7 @@ jobs:
             echo "SCRIPTS_UPDATED=${has_changes}"
         ) >> "${GITHUB_ENV}"
     - name: Update Zwift
-      if: steps.build_required.outputs.update_zwift == '1'
-      env:
-        IMAGE: ${{ steps.metadata.outputs.image }}
-        TAG: ${{ steps.metadata.outputs.tag }}
-        VERSION: ${{ steps.metadata.outputs.version }}
+      if: env.UPDATE_ZWIFT == '1'
       run: |
         xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
             docker run \
@@ -277,10 +252,6 @@ jobs:
         ) >> "${GITHUB_ENV}"
     - name: Push to container registry
       if: env.NEXT_IMAGE != env.BASE_IMAGE
-      env:
-        COMMIT: ${{ steps.metadata.outputs.commit }}
-        IMAGE: ${{ steps.metadata.outputs.image }}
-        TAG: ${{ steps.metadata.outputs.tag }}
       run: |
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
@@ -289,17 +260,12 @@ jobs:
         docker push "${IMAGE}:latest"
     - name: Report
       id: report
-      env:
-        COMMIT: ${{ steps.metadata.outputs.commit }}
-        IMAGE: ${{ steps.metadata.outputs.image }}
-        TAG: ${{ steps.metadata.outputs.tag }}
-        VERSION: ${{ steps.metadata.outputs.version }}
       run: |
         updated=0
 
         ( echo "### Building image 🏗️"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
 
-        if [[ ${IMAGE_REBUILD} -eq 1 ]]; then
+        if [[ ${IMAGE_REBUILT} -eq 1 ]]; then
             updated=1
             echo "Performed full rebuild!" >> "${GITHUB_STEP_SUMMARY}"
         elif [[ ${SCRIPTS_UPDATED} -eq 1 ]] || [[ ${ZWIFT_UPDATED} -eq 1 ]]; then
@@ -331,4 +297,9 @@ jobs:
             ) >> "${GITHUB_STEP_SUMMARY}"
         fi
 
-        echo "updated=${updated}" >> "${GITHUB_OUTPUT}"
+        (
+            echo "commit=${COMMIT}"
+            echo "image=${IMAGE}:${TAG}"
+            echo "updated=${updated}"
+            echo "version=${VERSION}"
+        ) >> "${GITHUB_OUTPUT}"
