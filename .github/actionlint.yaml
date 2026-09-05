@@ -1,0 +1,7 @@
+---
+paths:
+  '**/*':
+    ignore:
+    # actionlint does not known about concurrency.queue
+    # https://github.com/rhysd/actionlint/issues/657
+    - unexpected key "queue" for "concurrency" section.*
