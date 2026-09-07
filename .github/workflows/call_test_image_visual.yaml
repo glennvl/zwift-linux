@@ -65,7 +65,7 @@ jobs:
                 ${IMAGE}
             for i in \$(seq 1 ${NUM_SCREENSHOTS}); do
                 echo \"Taking screenshot \${i} of ${NUM_SCREENSHOTS}\"
-                import -window root zwift-screenshot-\$((i-1)).png
+                import -window root zwift-screenshot-\$((i - 1)).png
                 sleep ${SCREENSHOT_DELAY}
             done
             docker kill zwift-visual-test || echo \"::warning::Zwift container crashed!\"
@@ -74,7 +74,7 @@ jobs:
       run: |
         match_index="${NUM_SCREENSHOTS}"
         convert tests/zwift-visual-test/reference-screenshot.png -draw "${IMAGE_MASK}" reference-normalized.png
-        for i in $(seq 0 "$((NUM_SCREENSHOTS-1))"); do
+        for i in $(seq 0 "$((NUM_SCREENSHOTS - 1))"); do
             convert "zwift-screenshot-${i}.png" -draw "${IMAGE_MASK}" screenshot-normalized.png
             if different_pixels="$(compare \
                 -metric AE \
