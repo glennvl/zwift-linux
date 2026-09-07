@@ -37,6 +37,6 @@ jobs:
       username: ${{ github.repository_owner }}
       dry-run: false # TODO *dry_run
       keep-latest: true
-      max-age: 30
+      max-age: 4 # TODO set to a reasonable number, ie 30
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
