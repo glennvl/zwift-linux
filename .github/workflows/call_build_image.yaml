@@ -251,7 +251,7 @@ jobs:
             echo "ZWIFT_UPDATED=1"
         ) >> "${GITHUB_ENV}"
     - name: Push to container registry
-      if: env.NEXT_IMAGE != env.BASE_IMAGE
+      if: env.IMAGE_REBUILT == '1' || env.NEXT_IMAGE != env.BASE_IMAGE
       run: |
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:${DOCKERFILE}"
