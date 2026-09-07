@@ -254,9 +254,11 @@ jobs:
       if: env.NEXT_IMAGE != env.BASE_IMAGE
       run: |
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
+        docker tag "${IMAGE}:${TAG}" "${IMAGE}:${DOCKERFILE}"
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
         docker push "${IMAGE}:${TAG}"
         docker push "${IMAGE}:${COMMIT}"
+        docker push "${IMAGE}:${DOCKERFILE}"
         docker push "${IMAGE}:latest"
     - name: Report
       id: report
@@ -293,6 +295,7 @@ jobs:
                 echo "- *${IMAGE}:latest*"
                 echo "- *${IMAGE}:${TAG}*"
                 echo "- *${IMAGE}:${COMMIT}*"
+                echo "- *${IMAGE}:${DOCKERFILE}*"
                 echo ""
             ) >> "${GITHUB_STEP_SUMMARY}"
         fi
