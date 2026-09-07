@@ -104,7 +104,7 @@ jobs:
             update_scripts=1
             if ! embedded_zwift="$(docker inspect \
                 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
-                "${base_image}" \
+                "${base_image}"
             )" || [[ ${embedded_zwift} != "${VERSION}" ]]; then
                 update_zwift=1
             fi
@@ -113,12 +113,12 @@ jobs:
             base_image="${IMAGE}:latest"
             if ! embedded_dockerfile="$(docker inspect \
                 --format '{{ index .Config.Labels "io.github.netbrain.zwift.dockerfile" }}' \
-                "${base_image}" \
+                "${base_image}"
             )" || [[ ${embedded_dockerfile} != "${DOCKERFILE}" ]]; then
                 rebuild=1
             elif ! embedded_zwift="$(docker inspect \
                 --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
-                "${base_image}" \
+                "${base_image}"
             )" || [[ ${embedded_zwift} != "${VERSION}" ]]; then
                 update_scripts=1
                 update_zwift=1
