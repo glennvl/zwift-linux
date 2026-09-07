@@ -216,9 +216,13 @@ jobs:
             age="${id_tag_age_status[2]}"
             status="${id_tag_age_status[3]}"
             [[ ${status} != "delete" ]] && continue
-            if ! http_code="$(curl -so /dev/null -w "%{http_code}" -X delete \
-                "${API_URL}/repositories/${REPO}/tags/${tag}/" \
-                -H "Authorization: Bearer ${JWT_TOKEN}"
+            if ! http_code="$(
+                curl \
+                    -so /dev/null \
+                    -w "%{http_code}" \
+                    -X DELETE \
+                    -H "Authorization: Bearer ${JWT_TOKEN}" \
+                    "${API_URL}/repositories/${REPO}/tags/${tag}/"
             )" || [[ ${http_code} -ne 204 ]]; then
                 tags_array["$((i - 1))"]="${id}:${tag}:${age}:delete_failed"
                 echo "::warning::Failed to delete ${REPO}:${tag} (HTTP ${http_code})"
@@ -244,11 +248,15 @@ jobs:
             status="${id_tag_age_status[3]}"
             [[ ${status} != "delete" ]] && continue
             [[ -v deleted_versions["${id}"] ]] && continue
-            if http_code="$(curl -so /dev/null -w "%{http_code}" -X delete \
-                "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions/${id}" \
-                -H "Authorization: Bearer ${TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}"
+            if http_code="$(
+                curl \
+                    -so /dev/null \
+                    -w "%{http_code}" \
+                    -X DELETE \
+                    -H "Authorization: Bearer ${TOKEN}" \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
+                    "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions/${id}"
             )" && [[ ${http_code} -eq 204 ]]; then
                 deleted_versions["${id}"]=1
             else
