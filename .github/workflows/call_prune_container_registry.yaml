@@ -112,7 +112,7 @@ jobs:
             "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/vnd.github+json" \
-            -H "X-Github-Api-Version: ${GITHUB_API_VERSION}"
+            -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}"
         )"
 
         count="$(jq "length" <<< "${response}")"
@@ -207,7 +207,7 @@ jobs:
                 "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions/${id}" \
                 -H "Authorization: Bearer ${TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
-                -H "X-Github-Api-Version: ${GITHUB_API_VERSION}"
+                -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}"
             )" && [[ ${http_code} -eq 204 ]]; then
                 deleted_versions["${id}"]=1
             else
