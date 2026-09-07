@@ -37,6 +37,8 @@ name: Prune images from a container registry
       token:
         description: access token for the container registry
         required: true
+env:
+  GITHUB_API_VERSION: '2026-03-10'
 jobs:
   prune:
     name: Prune
@@ -110,6 +112,7 @@ jobs:
             "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions" \
             -H "Authorization: Bearer ${TOKEN}" \
             -H "Accept: application/vnd.github+json" \
+            -H "X-Github-Api-Version: ${GITHUB_API_VERSION}" \
         )"
 
         count="$(jq -r ".[] | .id" <<< "${response}" | wc -l)"
@@ -204,6 +207,7 @@ jobs:
                 "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions/${id}" \
                 -H "Authorization: Bearer ${TOKEN}" \
                 -H "Accept: application/vnd.github+json" \
+                -H "X-Github-Api-Version: ${GITHUB_API_VERSION}" \
             )" && [[ ${http_code} -eq 204 ]]; then
                 deleted_versions["${id}"]=1
             else
