@@ -34,7 +34,7 @@ jobs:
       api-url: https://api.github.com
       api-type: github
       repository: ${{ github.repository }}
-      username: ${{ github.actor }}
+      username: ${{ github.repository_owner }}
       dry-run: false # TODO *dry_run
       keep-latest: true
       max-age: 30
