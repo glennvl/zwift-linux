@@ -115,13 +115,13 @@ jobs:
             -H "X-Github-Api-Version: ${GITHUB_API_VERSION}"
         )"
 
-        count="$(jq -r ".[] | .id" <<< "${response}" | wc -l)"
+        count="$(jq "length" <<< "${response}")"
         for i in $(seq 0 $((count - 1))); do
             image_id="$(jq -r ".[${i}].id" <<< "${response}")"
             last_updated="$(jq -r ".[${i}].updated_at" <<< "${response}")"
             last_updated_day="$(date -ud "${last_updated}" +%F)"
             age_days="$((($(date -d "${today}" +%s) - $(date -d "${last_updated_day}" +%s)) / 86400))"
-            tag_count="$(jq -r ".[${i}].metadata.container.tags[]" <<< "${response}" | wc -l)"
+            tag_count="$(jq ".[${i}].metadata.container.tags | length" <<< "${response}")"
             for j in $(seq 0 $((tag_count - 1))); do
                 tag="$(jq -r ".[${i}].metadata.container.tags[${j}]" <<< "${response}")"
                 tags_array+=("${image_id}:${tag}:${age_days}")
