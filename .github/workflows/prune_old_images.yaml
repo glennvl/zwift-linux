@@ -1,6 +1,7 @@
 ---
 name: Prune old images
 'on':
+  pull_request: # TODO delete this trigger
   schedule:
   - cron: 0 0 * * 0 # weekly on Sundays
   workflow_dispatch:
@@ -14,18 +15,18 @@ concurrency:
 jobs:
   prune-dockerhub:
     name: docker.io
-    if: github.repository == 'netbrain/zwift'
+    # TODO if: github.repository == 'netbrain/zwift'
     uses: ./.github/workflows/call_prune_container_registry.yaml
     with:
       api-url: https://hub.docker.com/v2
       api-type: docker-v2
-      repository: ${{ github.repository }}
-      username: ${{ vars.DOCKERHUB_USERNAME }}
-      dry-run: &dry_run ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      repository: netbrain/zwift # TOTDO ${{ github.repository }}
+      username: none # TODO ${{ vars.DOCKERHUB_USERNAME }}
+      dry-run: true # TODO &dry_run ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
       keep-latest: true
       max-age: 365
     secrets:
-      token: ${{ secrets.DOCKERHUB_TOKEN }}
+      token: none # TODO ${{ secrets.DOCKERHUB_TOKEN }}
   prune-ghcr:
     name: ghcr.io
     uses: ./.github/workflows/call_prune_container_registry.yaml
@@ -34,7 +35,7 @@ jobs:
       api-type: github
       repository: ${{ github.repository }}
       username: ${{ github.actor }}
-      dry-run: *dry_run
+      dry-run: false # TODO *dry_run
       keep-latest: true
       max-age: 30
     secrets:
