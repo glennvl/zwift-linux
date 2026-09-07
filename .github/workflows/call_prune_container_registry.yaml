@@ -43,6 +43,9 @@ jobs:
   prune:
     name: Prune
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
     - name: Login to docker api
       if: inputs.api-type == 'docker-v2' && ! inputs.dry-run
