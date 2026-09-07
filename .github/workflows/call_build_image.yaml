@@ -47,7 +47,7 @@ jobs:
       contents: read
       packages: write
     outputs:
-      commit: ${{ steps.report.outputs.commmit }}
+      commit: ${{ steps.report.outputs.commit }}
       image: ${{ steps.report.outputs.image }}
       updated: ${{ steps.report.outputs.updated }}
       version: ${{ steps.report.outputs.version }}
