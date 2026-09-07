@@ -82,7 +82,7 @@ jobs:
                 reference-normalized.png \
                 screenshot-normalized.png \
                 screenshot-diff.png \
-                2>&1 \
+                2>&1
             )" && [[ ${different_pixels} == "0" ]]; then
                 echo "Checking screenshot $((i+1)) of ${NUM_SCREENSHOTS}: MATCH"
                 match_index="${i}"
