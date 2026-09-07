@@ -23,7 +23,7 @@ jobs:
       repository: ${{ github.repository }}
       username: ${{ vars.DOCKERHUB_USERNAME }}
     secrets:
-      token: secrets.DOCKERHUB_TOKEN
+      token: ${{ secrets.DOCKERHUB_TOKEN }}
   prune-ghcr:
     name: ghcr.io
     uses: ./.github/workflows/call_prune_ghcr.yaml
