@@ -22,9 +22,6 @@ name: Build zwift image
         required: false
         type: boolean
     outputs:
-      commit:
-        description: commit from which image is built
-        value: ${{ jobs.build.outputs.commit }}
       image:
         description: zwift image
         value: ${{ jobs.build.outputs.image }}
@@ -47,7 +44,6 @@ jobs:
       contents: read
       packages: write
     outputs:
-      commit: ${{ steps.report.outputs.commit }}
       image: ${{ steps.report.outputs.image }}
       updated: ${{ steps.report.outputs.updated }}
       version: ${{ steps.report.outputs.version }}
@@ -301,7 +297,6 @@ jobs:
         fi
 
         (
-            echo "commit=${COMMIT}"
             echo "image=${IMAGE}:${TAG}"
             echo "updated=${updated}"
             echo "version=${VERSION}"
