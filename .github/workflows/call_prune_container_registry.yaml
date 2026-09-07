@@ -104,28 +104,64 @@ jobs:
         TOKEN: ${{ secrets.token }}
       run: |
         today="$(date +%F)"
+        today_epoch="$(date -d "${today}" +%s)"
+        repository="$(basename "${REPO}")"
+
+        if [[ "${USERNAME}/${repository}" != "${REPO}" ]]; then
+            echo "::warning::Pruning ${REPO}, but user ${USERNAME} is not the repository owner!"
+        fi
 
         declare -a tags_array=()
 
-        repository="$(basename "${REPO}")"
-        response="$(curl -sf \
-            "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions" \
-            -H "Authorization: Bearer ${TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}"
-        )"
+        page_size=100
+        next_url="${API_URL}/users/${USERNAME}/packages/container/${repository}/versions?per_page=${page_size}&page=1"
+        while [[ -n ${next_url} ]]; do
+            response_body="$(mktemp)"
 
-        count="$(jq "length" <<< "${response}")"
-        for i in $(seq 0 $((count - 1))); do
-            image_id="$(jq -r ".[${i}].id" <<< "${response}")"
-            last_updated="$(jq -r ".[${i}].updated_at" <<< "${response}")"
-            last_updated_day="$(date -ud "${last_updated}" +%F)"
-            age_days="$((($(date -d "${today}" +%s) - $(date -d "${last_updated_day}" +%s)) / 86400))"
-            tag_count="$(jq ".[${i}].metadata.container.tags | length" <<< "${response}")"
-            for j in $(seq 0 $((tag_count - 1))); do
-                tag="$(jq -r ".[${i}].metadata.container.tags[${j}]" <<< "${response}")"
-                tags_array+=("${image_id}:${tag}:${age_days}")
-            done
+            if ! response_headers="$(
+                curl --silent --show-error --fail \
+                    --dump-header - \
+                    --output "${response_body}" \
+                    --header "Authorization: Bearer ${TOKEN}" \
+                    --header "Accept: application/vnd.github+json" \
+                    --header "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
+                    "${next_url}"
+            )"; then
+                echo "::error::Failed to fetch package versions"
+                exit 1
+            fi
+
+            if ! tag_rows="$(
+                jq -r '
+                  .[] |
+                  .id as $id |
+                  .updated_at as $updated_at
+                  | .metadata.container.tags[]?
+                  | [$id, ., $updated_at]
+                  | @tsv
+                ' "${response_body}"
+            )"; then
+                echo "::error::GitHub returned invalid or unexpected data"
+                exit 1
+            fi
+
+            if [[ -n ${tag_rows} ]]; then
+                while IFS=$'\t' read -r image_id tag last_updated; do
+                    last_updated_epoch="$(date -ud "${last_updated}" +%s)"
+                    age_days="$(((today_epoch - last_updated_epoch) / 86400))"
+                    tags_array+=("${image_id}:${tag}:${age_days}")
+                done <<< "${tag_rows}"
+            fi
+
+            next_url=""
+            if link_header="$(printf '%s\n' "${response_headers}" | grep -i '^Link:')"; then
+                next_url="$(
+                    printf '%s\n' "${link_header}" \
+                        | tr ',' '\n' \
+                        | sed -nE 's/.*<([^>]+)>[[:space:]]*;[[:space:]]*rel="next".*/\1/p' \
+                        | head -n 1
+                )"
+            fi
         done
 
         echo "TAGS=${tags_array[*]}" >> "${GITHUB_ENV}"
