@@ -59,6 +59,8 @@ jobs:
             -d "{\"username\":\"${USERNAME}\",\"password\":\"${TOKEN}\"}" \
             | jq -r '.token')"
 
+        echo "::add-mask::${token}"
+
         if [[ -z ${token} ]] || [[ ${token} == "null" ]]; then
             echo "::error::Failed to authenticate with docker hub"
             exit 1
