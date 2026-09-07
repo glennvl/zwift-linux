@@ -226,7 +226,7 @@ jobs:
             echo "Pruned images from ${REPO} that are older than ${MAX_AGE_DAYS} days."
             echo ""
             echo "|Tag | Age (days) | Status |"
-            echo "|:---|-----------:|:------:|"
+            echo "|---:|-----------:|:------:|"
         ) >> "${GITHUB_STEP_SUMMARY}"
 
         IFS=" " read -ra tags_array <<< "${TAGS}"
