@@ -75,37 +75,32 @@ jobs:
         API_URL: ${{ inputs.api-url }}
         REPO: ${{ inputs.repository }}
       run: |
-        page=1
         today="$(date +%F)"
+        today_epoch="$(date -d "${today}" +%s)"
 
         declare -a tags_array=()
 
-        while true; do
-            if ! response="$(
-                curl \
-                    --silent --show-error --fail \
-                    "${API_URL}/repositories/${REPO}/tags/?page_size=${PAGE_SIZE}&page=${page}"
-            )"; then
+        next_url="${API_URL}/repositories/${REPO}/tags/?page_size=${PAGE_SIZE}&page=1"
+        while [[ -n ${next_url} ]]; do
+            if ! response_body="$(curl --silent --show-error --fail "${next_url}")"; then
                 echo "::error::Failed to fetch tags"
                 exit 1
             fi
 
-            tags="$(jq -r ".results // []" <<< "${response}")"
-            count="$(jq "length" <<< "${tags}")"
-            [[ ${count} -eq 0 ]] && break
+            if ! tag_rows="$(jq -r '.results[]? | [.id, .name, .last_updated] | @tsv' <<< "${response_body}")"; then
+                echo "::error::DockerHub returned invalid or unexpected data"
+                exit 1
+            fi
 
-            for i in $(seq 0 $((count - 1))); do
-                tag_id="$(jq -r ".[${i}].id" <<< "${tags}")"
-                tag="$(jq -r ".[${i}].name" <<< "${tags}")"
-                last_updated="$(jq -r ".[${i}].last_updated" <<< "${tags}")"
-                last_updated_day="$(date -ud "${last_updated}" +%F)"
-                tag_age_days=$((($(date -d "${today}" +%s) - $(date -d "${last_updated_day}" +%s)) / 86400))
-                tags_array+=("${tag_id}:${tag}:${tag_age_days}")
-            done
+            if [[ -n ${tag_rows} ]]; then
+                while IFS=$'\t' read -r image_id tag last_updated; do
+                    last_updated_epoch="$(date -ud "${last_updated}" +%s)"
+                    age_days="$(((today_epoch - last_updated_epoch) / 86400))"
+                    tags_array+=("${image_id}:${tag}:${age_days}")
+                done <<< "${tag_rows}"
+            fi
 
-            next="$(jq -r ".next // empty" <<< "${response}")"
-            [[ -z ${next} ]] && break
-            ((page++)) || true
+            next_url="$(jq -r ".next // empty" <<< "${response}")"
         done
 
         echo "TAGS=${tags_array[*]}" >> "${GITHUB_ENV}"
