@@ -87,7 +87,7 @@ jobs:
                 exit 1
             fi
 
-            if ! tag_rows="$(jq -r '.results[]? | [.id, .name, .last_updated] | @tsv' <<< "${response_body}")"; then
+            if ! tag_rows="$(jq -r '.results[]? | [.name, .name, .last_updated] | @tsv' <<< "${response_body}")"; then
                 echo "::error::DockerHub returned invalid or unexpected data"
                 exit 1
             fi
@@ -144,7 +144,7 @@ jobs:
                     .updated_at as $updated_at |
                     (.metadata.container.tags // []) as $tags |
                     if ($tags | length) == 0 then
-                        [$id, "[untagged-\($id)]", $updated_at] | @tsv
+                        [$id, "[untagged]-\($id)", $updated_at] | @tsv
                     else
                         $tags[] | [$id, ., $updated_at] | @tsv
                     end
@@ -188,6 +188,7 @@ jobs:
             IFS=":" read -r id tag updated_epoch <<< "${tags_array[$((i - 1))]}"
             age_days="$(((today_epoch - updated_epoch) / 86400))"
             status="keep"
+            [[ ${tag} == "[untagged]-${id}" ]] && status="delete"
             [[ ${tag} == "latest" ]] && latest_id="${id}"
             [[ ${age} -gt ${MAX_AGE_DAYS} ]] && status="delete"
             tags_array["$((i - 1))"]="${id}:${tag}:${age_days}:${status}"
@@ -221,10 +222,10 @@ jobs:
                     --write-out "%{http_code}" \
                     --request DELETE \
                     --header "Authorization: Bearer ${JWT_TOKEN}" \
-                    "${API_URL}/repositories/${USERNAME}/${repository}/tags/${tag}/"
+                    "${API_URL}/repositories/${USERNAME}/${repository}/tags/${id}/"
             )" || [[ ${http_code} -ne 204 ]]; then
                 tags_array["$((i - 1))"]="${id}:${tag}:${age}:delete_failed"
-                echo "::warning::Failed to delete ${USERNAME}/${repository}:${tag} (HTTP ${http_code})"
+                echo "::warning::Failed to delete ${USERNAME}/${repository}:${id} (HTTP ${http_code})"
             fi
         done
         echo "TAGS=${tags_array[*]}" >> "${GITHUB_ENV}"
