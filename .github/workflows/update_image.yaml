@@ -42,7 +42,7 @@ jobs:
       token: ${{ secrets.GITHUB_TOKEN }}
   deploy:
     name: Deploy
-    if: github.repository == 'netbrain/zwift' && github.event_name != 'pull_request' && needs.build.outputs.updated == '1'
+    if: github.event_name != 'pull_request' && needs.build.outputs.updated == '1'
     needs:
     - build
     - test

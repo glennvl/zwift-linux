@@ -15,7 +15,6 @@ concurrency:
 jobs:
   prune-dockerhub:
     name: docker.io
-    # TODO if: github.repository == 'netbrain/zwift'
     uses: ./.github/workflows/call_prune_container_registry.yaml
     with:
       api-url: https://hub.docker.com/v2
