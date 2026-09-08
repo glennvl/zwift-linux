@@ -180,10 +180,7 @@ jobs:
         # filter based on age
         IFS=" " read -ra tags_array <<< "${TAGS}"
         for i in $(seq 1 ${#tags_array[@]}); do
-            IFS=":" read -ra id_tag_age <<< "${tags_array[$((i - 1))]}"
-            id="${id_tag_age[0]}"
-            tag="${id_tag_age[1]}"
-            age="${id_tag_age[2]}"
+            IFS=":" read -r id tag age status <<< "${tags_array[$((i - 1))]}"
             status="keep"
             [[ ${tag} == "latest" ]] && latest_id="${id}"
             [[ ${age} -gt ${MAX_AGE_DAYS} ]] && status="delete"
@@ -193,10 +190,7 @@ jobs:
         # protect latest
         if [[ ${KEEP_LATEST} == "true" ]] && [[ -n ${latest_id} ]]; then
             for i in $(seq 1 ${#tags_array[@]}); do
-                IFS=":" read -ra id_tag_age_status <<< "${tags_array[$((i - 1))]}"
-                id="${id_tag_age_status[0]}"
-                tag="${id_tag_age_status[1]}"
-                age="${id_tag_age_status[2]}"
+                IFS=":" read -r id tag age _ <<< "${tags_array[$((i - 1))]}"
                 [[ ${id} == "${latest_id}" ]] && tags_array["$((i - 1))"]="${id}:${tag}:${age}:protected"
             done
         fi
@@ -210,11 +204,7 @@ jobs:
       run: |
         IFS=" " read -ra tags_array <<< "${TAGS}"
         for i in $(seq 1 ${#tags_array[@]}); do
-            IFS=":" read -ra id_tag_age_status <<< "${tags_array[$((i - 1))]}"
-            id="${id_tag_age_status[0]}"
-            tag="${id_tag_age_status[1]}"
-            age="${id_tag_age_status[2]}"
-            status="${id_tag_age_status[3]}"
+            IFS=":" read -r id tag age status <<< "${tags_array[$((i - 1))]}"
             [[ ${status} != "delete" ]] && continue
             if ! http_code="$(
                 curl \
@@ -241,11 +231,7 @@ jobs:
         declare -A deleted_versions
         IFS=" " read -ra tags_array <<< "${TAGS}"
         for i in $(seq 1 ${#tags_array[@]}); do
-            IFS=":" read -ra id_tag_age_status <<< "${tags_array[$((i - 1))]}"
-            id="${id_tag_age_status[0]}"
-            tag="${id_tag_age_status[1]}"
-            age="${id_tag_age_status[2]}"
-            status="${id_tag_age_status[3]}"
+            IFS=":" read -r id tag age status <<< "${tags_array[$((i - 1))]}"
             [[ ${status} != "delete" ]] && continue
             [[ -v deleted_versions["${id}"] ]] && continue
             if http_code="$(
@@ -288,12 +274,8 @@ jobs:
         fi
 
         deleted=0
-        for i in $(seq 1 ${#tags_array[@]}); do
-            IFS=":" read -ra id_tag_age_status <<< "${tags_array[$((i - 1))]}"
-            tag="${id_tag_age_status[1]}"
-            age="${id_tag_age_status[2]}"
-            status="${id_tag_age_status[3]}"
-
+        for tag_info in "${tags_array[@]}" ; do
+            IFS=":" read -r _ tag age status <<< "${tag_info}"
             case ${status} in
                 "protected") status="🔒" ;;
                 "keep") status="✔️" ;;
@@ -304,7 +286,6 @@ jobs:
                 "delete_failed") status="⚠️" ;;
                 *) status="❓" ;;
             esac
-
             echo "| ${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
         done
 
