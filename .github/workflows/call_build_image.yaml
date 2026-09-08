@@ -82,14 +82,20 @@ jobs:
             echo "VERSION=${version}"
         ) >> "${GITHUB_ENV}"
     - name: Check build required
+      env:
+        FORCE_REBUILD: ${{ inputs.rebuild }}
       run: |
-        base_image="${IMAGE}:${TAG}"
+        base_image=""
         rebuild=0
         update_zwift=0
         update_scripts=0
 
-        if docker manifest inspect "${IMAGE}:${TAG}" > /dev/null 2>&1; then
+        if [[ ${FORCE_REBUILD} == "true" ]]; then
+            echo "Force rebuild requested!"
+            rebuild=1
+        elif docker manifest inspect "${IMAGE}:${TAG}" > /dev/null 2>&1; then
             echo "${IMAGE} is already up-to-date"
+            base_image="${IMAGE}:${TAG}"
         elif docker pull "${IMAGE}:${COMMIT}" > /dev/null 2>&1; then
             echo "Using image for commit as base image"
             base_image="${IMAGE}:${COMMIT}"
@@ -123,7 +129,6 @@ jobs:
             fi
         else
             echo "No suitable base image found, build from scratch"
-            base_image=""
             rebuild=1
         fi
 
@@ -138,7 +143,7 @@ jobs:
             echo "SCRIPTS_UPDATED=0"
         ) >> "${GITHUB_ENV}"
     - name: Build image
-      if: inputs.rebuild || env.REBUILD == '1'
+      if: env.REBUILD == '1'
       env:
         REPO: ${{ inputs.repository }}
       run: |
@@ -247,7 +252,7 @@ jobs:
             echo "ZWIFT_UPDATED=1"
         ) >> "${GITHUB_ENV}"
     - name: Push to container registry
-      if: env.IMAGE_REBUILT == '1' || env.NEXT_IMAGE != env.BASE_IMAGE
+      if: env.NEXT_IMAGE != env.BASE_IMAGE
       run: |
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
         docker tag "${IMAGE}:${TAG}" "${IMAGE}:${DOCKERFILE}"
