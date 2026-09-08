@@ -253,13 +253,13 @@ jobs:
         IFS=" " read -ra versions_array <<< "${VERSIONS}"
         for i in $(seq 1 ${#versions_array[@]}); do
             IFS=":" read -r version tags age status <<< "${versions_array[$((i - 1))]}"
-            if [[ ${tags} == "[untagged]-${version}" ]]; then
-                num_tags=0
-            else
+            tag_count=0
+            if [[ ${tags} != "[untagged]-${version}" ]]; then
                 IFS=',' read -ra tags_array <<< "${tags}"
-                num_tags="${#tags_array[@]}"
+                tag_count="${#tags_array[@]}"
             fi
-            versions_array["$((i - 1))"]="${version}:${version}\\(${num_tags}\\tags):${age}:${status}"
+            printf -v num_tags '%11s' "(${tag_count} tags)"
+            versions_array["$((i - 1))"]="${version}:${version}${num_tags// /\\}:${age}:${status}"
         done
         echo "VERSIONS=${versions_array[*]}" >> "${GITHUB_ENV}"
     - name: Report
@@ -301,7 +301,7 @@ jobs:
                 "delete_failed") status="⚠️" ;;
                 *) status="❓" ;;
             esac
-            echo "| ${version//\\/ } | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
+            echo "| \`${version//\\/ }\` | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
         done
 
         (echo ""; echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"; echo "") >> "${GITHUB_STEP_SUMMARY}"
