@@ -76,8 +76,6 @@ jobs:
         USERNAME: ${{ inputs.username }}
         REPO: ${{ inputs.repository }}
       run: |
-        today="$(date +%F)"
-        today_epoch="$(date -d "${today}" +%s)"
         repository="$(basename "${REPO}")"
 
         declare -a tags_array=()
@@ -96,9 +94,8 @@ jobs:
 
             if [[ -n ${tag_rows} ]]; then
                 while IFS=$'\t' read -r image_id tag last_updated; do
-                    last_updated_epoch="$(date -ud "${last_updated}" +%s)"
-                    age_days="$(((today_epoch - last_updated_epoch) / 86400))"
-                    tags_array+=("${image_id}:${tag}:${age_days}")
+                    updated_epoch="$(date -ud "${last_updated}" +%s)"
+                    tags_array+=("${image_id}:${tag}:${updated_epoch}")
                 done <<< "${tag_rows}"
             fi
 
@@ -114,8 +111,6 @@ jobs:
         USERNAME: ${{ inputs.username }}
         TOKEN: ${{ secrets.token }}
       run: |
-        today="$(date +%F)"
-        today_epoch="$(date -d "${today}" +%s)"
         repository="$(basename "${REPO}")"
 
         if [[ "${USERNAME}/${repository}" != "${REPO}" ]]; then
@@ -161,9 +156,8 @@ jobs:
 
             if [[ -n ${tag_rows} ]]; then
                 while IFS=$'\t' read -r image_id tag last_updated; do
-                    last_updated_epoch="$(date -ud "${last_updated}" +%s)"
-                    age_days="$(((today_epoch - last_updated_epoch) / 86400))"
-                    tags_array+=("${image_id}:${tag}:${age_days}")
+                    updated_epoch="$(date -ud "${last_updated}" +%s)"
+                    tags_array+=("${image_id}:${tag}:${updated_epoch}")
                 done <<< "${tag_rows}"
             fi
 
@@ -184,16 +178,19 @@ jobs:
         KEEP_LATEST: ${{ inputs.keep-latest }}
         MAX_AGE_DAYS: ${{ inputs.max-age }}
       run: |
+        IFS=" " read -ra tags_array <<< "${TAGS}"
         latest_id=""
 
         # filter based on age
-        IFS=" " read -ra tags_array <<< "${TAGS}"
+        today="$(date +%F)"
+        today_epoch="$(date -d "${today}" +%s)"
         for i in $(seq 1 ${#tags_array[@]}); do
-            IFS=":" read -r id tag age status <<< "${tags_array[$((i - 1))]}"
+            IFS=":" read -r id tag updated_epoch status <<< "${tags_array[$((i - 1))]}"
+            age_days="$(((today_epoch - updated_epoch) / 86400))"
             status="keep"
             [[ ${tag} == "latest" ]] && latest_id="${id}"
             [[ ${age} -gt ${MAX_AGE_DAYS} ]] && status="delete"
-            tags_array["$((i - 1))"]="${id}:${tag}:${age}:${status}"
+            tags_array["$((i - 1))"]="${id}:${tag}:${age_days}:${status}"
         done
 
         # protect latest
