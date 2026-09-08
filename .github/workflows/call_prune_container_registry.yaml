@@ -73,14 +73,16 @@ jobs:
       if: inputs.api-type == 'docker-v2'
       env:
         API_URL: ${{ inputs.api-url }}
+        USERNAME: ${{ inputs.username }}
         REPO: ${{ inputs.repository }}
       run: |
         today="$(date +%F)"
         today_epoch="$(date -d "${today}" +%s)"
+        repository="$(basename "${REPO}")"
 
         declare -a tags_array=()
 
-        next_url="${API_URL}/repositories/${REPO}/tags/?page_size=${PAGE_SIZE}&page=1"
+        next_url="${API_URL}/repositories/${USERNAME}/${repository}/tags/?page_size=${PAGE_SIZE}&page=1"
         while [[ -n ${next_url} ]]; do
             if ! response_body="$(curl --silent --show-error --fail "${next_url}")"; then
                 echo "::error::Failed to fetch tags"
@@ -204,8 +206,10 @@ jobs:
       if: inputs.api-type == 'docker-v2' && ! inputs.dry-run
       env:
         API_URL: ${{ inputs.api-url }}
+        USERNAME: ${{ inputs.username }}
         REPO: ${{ inputs.repository }}
       run: |
+        repository="$(basename "${REPO}")"
         IFS=" " read -ra tags_array <<< "${TAGS}"
         for i in $(seq 1 ${#tags_array[@]}); do
             IFS=":" read -r id tag age status <<< "${tags_array[$((i - 1))]}"
@@ -217,10 +221,10 @@ jobs:
                     --write-out "%{http_code}" \
                     --request DELETE \
                     --header "Authorization: Bearer ${JWT_TOKEN}" \
-                    "${API_URL}/repositories/${REPO}/tags/${tag}/"
+                    "${API_URL}/repositories/${USERNAME}/${repository}/tags/${tag}/"
             )" || [[ ${http_code} -ne 204 ]]; then
                 tags_array["$((i - 1))"]="${id}:${tag}:${age}:delete_failed"
-                echo "::warning::Failed to delete ${REPO}:${tag} (HTTP ${http_code})"
+                echo "::warning::Failed to delete ${USERNAME}/${repository}:${tag} (HTTP ${http_code})"
             fi
         done
         echo "TAGS=${tags_array[*]}" >> "${GITHUB_ENV}"
