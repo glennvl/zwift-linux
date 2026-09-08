@@ -146,10 +146,13 @@ jobs:
                 jq -r '
                     .[] |
                     .id as $id |
-                    .updated_at as $updated_at
-                    | .metadata.container.tags[]?
-                    | [$id, ., $updated_at]
-                    | @tsv
+                    .updated_at as $updated_at |
+                    (.metadata.container.tags // []) as $tags |
+                    if ($tags | length) == 0 then
+                        [$id, "[untagged-\($id)]", $updated_at] | @tsv
+                    else
+                        $tags[] | [$id, ., $updated_at] | @tsv
+                    end
                 ' "${response_body}"
             )"; then
                 echo "::error::GitHub returned invalid or unexpected data"
