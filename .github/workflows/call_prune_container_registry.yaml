@@ -55,18 +55,19 @@ jobs:
         USERNAME: ${{ inputs.username }}
         TOKEN: ${{ secrets.token }}
       run: |
-        token="$(curl -sf -X POST "${API_URL}/users/login" \
-            -H "Content-Type: application/json" \
-            -d "{\"username\":\"${USERNAME}\",\"password\":\"${TOKEN}\"}" \
-            | jq -r '.token')"
-
-        echo "::add-mask::${token}"
-
-        if [[ -z ${token} ]] || [[ ${token} == "null" ]]; then
+        if ! response="$(
+            curl \
+                --silent --show-error --fail \
+                --request POST \
+                --data "{\"username\":\"${USERNAME}\",\"password\":\"${TOKEN}\"}" \
+                --header "Content-Type: application/json" \
+                "${API_URL}/users/login" \
+        )" || ! token="$(jq -r ".token" <<< "${response}")" || [[ -z ${token} ]] || [[ ${token} == "null" ]]; then
             echo "::error::Failed to authenticate with docker hub"
             exit 1
         fi
 
+        echo "::add-mask::${token}"
         echo "JWT_TOKEN=${token}" >> "${GITHUB_ENV}"
     - name: Collect tags using docker api
       if: inputs.api-type == 'docker-v2'
