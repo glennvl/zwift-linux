@@ -147,12 +147,12 @@ jobs:
 
             if ! tag_rows="$(
                 jq -r '
-                  .[] |
-                  .id as $id |
-                  .updated_at as $updated_at
-                  | .metadata.container.tags[]?
-                  | [$id, ., $updated_at]
-                  | @tsv
+                    .[] |
+                    .id as $id |
+                    .updated_at as $updated_at
+                    | .metadata.container.tags[]?
+                    | [$id, ., $updated_at]
+                    | @tsv
                 ' "${response_body}"
             )"; then
                 echo "::error::GitHub returned invalid or unexpected data"
