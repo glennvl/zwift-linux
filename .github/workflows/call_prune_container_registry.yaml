@@ -80,7 +80,7 @@ jobs:
         declare -a tags_array=()
 
         while true; do
-            if ! body="$(
+            if ! response="$(
                 curl \
                     --silent --show-error --fail \
                     "${API_URL}/repositories/${REPO}/tags/?page_size=${PAGE_SIZE}&page=${page}"
