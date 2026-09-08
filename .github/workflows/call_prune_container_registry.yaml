@@ -39,6 +39,7 @@ name: Prune images from a container registry
         required: true
 env:
   GITHUB_API_VERSION: '2026-03-10'
+  PAGE_SIZE: 100
 jobs:
   prune:
     name: Prune
@@ -73,14 +74,21 @@ jobs:
         API_URL: ${{ inputs.api-url }}
         REPO: ${{ inputs.repository }}
       run: |
-        page_size=100
         page=1
         today="$(date +%F)"
 
         declare -a tags_array=()
 
         while true; do
-            response="$(curl -sf "${API_URL}/repositories/${REPO}/tags/?page_size=${page_size}&page=${page}")"
+            if ! body="$(
+                curl \
+                    --silent --show-error --fail \
+                    "${API_URL}/repositories/${REPO}/tags/?page_size=${PAGE_SIZE}&page=${page}"
+            )"; then
+                echo "::error::Failed to fetch tags"
+                exit 1
+            fi
+
             tags="$(jq -r ".results // []" <<< "${response}")"
             count="$(jq "length" <<< "${tags}")"
             [[ ${count} -eq 0 ]] && break
@@ -118,13 +126,13 @@ jobs:
 
         declare -a tags_array=()
 
-        page_size=100
-        next_url="${API_URL}/users/${USERNAME}/packages/container/${repository}/versions?per_page=${page_size}&page=1"
+        next_url="${API_URL}/users/${USERNAME}/packages/container/${repository}/versions?per_page=${PAGE_SIZE}&page=1"
         while [[ -n ${next_url} ]]; do
             response_body="$(mktemp)"
 
             if ! response_headers="$(
-                curl --silent --show-error --fail \
+                curl \
+                    --silent --show-error --fail \
                     --dump-header - \
                     --output "${response_body}" \
                     --header "Authorization: Bearer ${TOKEN}" \
@@ -208,10 +216,11 @@ jobs:
             [[ ${status} != "delete" ]] && continue
             if ! http_code="$(
                 curl \
-                    -so /dev/null \
-                    -w "%{http_code}" \
-                    -X DELETE \
-                    -H "Authorization: Bearer ${JWT_TOKEN}" \
+                    --silent \
+                    --output /dev/null \
+                    --write-out "%{http_code}" \
+                    --request DELETE \
+                    --header "Authorization: Bearer ${JWT_TOKEN}" \
                     "${API_URL}/repositories/${REPO}/tags/${tag}/"
             )" || [[ ${http_code} -ne 204 ]]; then
                 tags_array["$((i - 1))"]="${id}:${tag}:${age}:delete_failed"
@@ -236,12 +245,13 @@ jobs:
             [[ -v deleted_versions["${id}"] ]] && continue
             if http_code="$(
                 curl \
-                    -so /dev/null \
-                    -w "%{http_code}" \
-                    -X DELETE \
-                    -H "Authorization: Bearer ${TOKEN}" \
-                    -H "Accept: application/vnd.github+json" \
-                    -H "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
+                    --silent \
+                    --output /dev/null \
+                    --write-out "%{http_code}" \
+                    --request DELETE \
+                    --header "Authorization: Bearer ${TOKEN}" \
+                    --header "Accept: application/vnd.github+json" \
+                    --header "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
                     "${API_URL}/users/${USERNAME}/packages/container/${repository}/versions/${id}"
             )" && [[ ${http_code} -eq 204 ]]; then
                 deleted_versions["${id}"]=1
