@@ -19,13 +19,13 @@ jobs:
     with:
       api-url: https://hub.docker.com/v2
       api-type: docker-v2
-      repository: netbrain/zwift # TOTDO ${{ github.repository }}
-      username: none # TODO ${{ vars.DOCKERHUB_USERNAME }}
-      dry-run: true # TODO &dry_run ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      repository: ${{ github.repository }}
+      username: ${{ vars.DOCKERHUB_USERNAME }}
+      dry-run: &dry_run ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
       keep-latest: true
-      max-age: 365
+      max-age: 365 # TODO decide max age
     secrets:
-      token: none # TODO ${{ secrets.DOCKERHUB_TOKEN }}
+      token: ${{ secrets.DOCKERHUB_TOKEN }}
   prune-ghcr:
     name: ghcr.io
     uses: ./.github/workflows/call_prune_container_registry.yaml
@@ -34,8 +34,8 @@ jobs:
       api-type: github
       repository: ${{ github.repository }}
       username: ${{ github.repository_owner }}
-      dry-run: false # TODO *dry_run
+      dry-run: *dry_run
       keep-latest: true
-      max-age: 4 # TODO set to a reasonable number, ie 30
+      max-age: 30 # TODO decide max age
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
