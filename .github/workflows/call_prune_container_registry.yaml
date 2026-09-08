@@ -291,7 +291,11 @@ jobs:
                 "keep") status="✔️" ;;
                 "delete")
                     ((deleted++)) || true
-                    status="🚫"
+                    if [[ ${DRY_RUN} == "true" ]]; then
+                        status="🛇"
+                    else
+                        status="🚫"
+                    fi
                     ;;
                 "delete_failed") status="⚠️" ;;
                 *) status="❓" ;;
@@ -299,9 +303,10 @@ jobs:
             echo "| ${tag} | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
         done
 
-        (
-            echo ""
-            echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"
-            echo ""
-            echo "Deleted ${deleted} tags."
-        ) >> "${GITHUB_STEP_SUMMARY}"
+        (echo ""; echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"; echo "") >> "${GITHUB_STEP_SUMMARY}"
+
+        if [[ ${DRY_RUN} == "true" ]]; then
+            echo "Dry-run: Would delete ${deleted} tags." >> "${GITHUB_STEP_SUMMARY}"
+        else
+            echo "Deleted ${deleted} tags." >> "${GITHUB_STEP_SUMMARY}"
+        fi
