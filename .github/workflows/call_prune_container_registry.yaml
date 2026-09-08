@@ -185,7 +185,7 @@ jobs:
         today="$(date +%F)"
         today_epoch="$(date -d "${today}" +%s)"
         for i in $(seq 1 ${#tags_array[@]}); do
-            IFS=":" read -r id tag updated_epoch status <<< "${tags_array[$((i - 1))]}"
+            IFS=":" read -r id tag updated_epoch <<< "${tags_array[$((i - 1))]}"
             age_days="$(((today_epoch - updated_epoch) / 86400))"
             status="keep"
             [[ ${tag} == "latest" ]] && latest_id="${id}"
