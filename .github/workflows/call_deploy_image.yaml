@@ -3,6 +3,14 @@ name: Deploy zwift image
 'on':
   workflow_call:
     inputs:
+      environment:
+        description: deployment environment
+        required: true
+        type: string
+      environment-url:
+        description: container registry repository url
+        required: false
+        type: string
       image:
         description: image to deploy
         required: true
@@ -31,6 +39,9 @@ jobs:
   deploy:
     name: Deploy to container registry
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment-url }}
     steps:
     - name: Login to container registry
       uses: docker/login-action@v4
