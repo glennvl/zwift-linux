@@ -3,6 +3,14 @@ name: Build zwift image
 'on':
   workflow_call:
     inputs:
+      environment:
+        description: deployment environment
+        required: true
+        type: string
+      environment-url:
+        description: container registry repository url
+        required: false
+        type: string
       repository:
         description: github repository
         required: true
@@ -40,6 +48,9 @@ jobs:
     name: Build if needed
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment-url }}
     permissions:
       contents: read
       packages: write
