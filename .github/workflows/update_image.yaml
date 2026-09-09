@@ -36,10 +36,6 @@ jobs:
     uses: ./.github/workflows/call_test_image_visual.yaml
     with:
       image: ${{ needs.build.outputs.image }}
-      registry: ghcr.io
-      username: ${{ github.actor }}
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
   deploy:
     name: Deploy
     if: needs.build.outputs.updated == '1' # TODO && github.event_name != 'pull_request'
@@ -51,13 +47,10 @@ jobs:
       cancel-in-progress: true
     uses: ./.github/workflows/call_deploy_image.yaml
     with:
-      build-registry: ghcr.io
-      build-username: ${{ github.actor }}
-      deploy-registry: docker.io
-      deploy-username: ${{ vars.DOCKERHUB_USERNAME }}
+      registry: docker.io
+      username: ${{ vars.DOCKERHUB_USERNAME }}
       image: ${{ needs.build.outputs.image }}
       repository: ${{ github.repository }}
       tag: ${{ needs.build.outputs.version }}
     secrets:
-      build-token: ${{ secrets.GITHUB_TOKEN }}
-      deploy-token: ${{ secrets.DOCKERHUB_TOKEN }}
+      token: ${{ secrets.DOCKERHUB_TOKEN }}
