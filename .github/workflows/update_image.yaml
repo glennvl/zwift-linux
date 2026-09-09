@@ -47,10 +47,10 @@ jobs:
       cancel-in-progress: true
     uses: ./.github/workflows/call_deploy_image.yaml
     with:
+      image: ${{ needs.build.outputs.image }}
       registry: docker.io
       username: ${{ vars.DOCKERHUB_USERNAME }}
-      image: ${{ needs.build.outputs.image }}
-      repository: ${{ github.repository }}
+      repository: ${{ vars.DOCKERHUB_REPOSITORY }}
       tag: ${{ needs.build.outputs.version }}
     secrets:
       token: ${{ secrets.DOCKERHUB_TOKEN }}
