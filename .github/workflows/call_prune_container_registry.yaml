@@ -3,12 +3,8 @@ name: Prune images from a container registry
 'on':
   workflow_call:
     inputs:
-      api-type:
-        description: type of api (docker-v2 or github)
-        required: true
-        type: string
-      api-url:
-        description: container registry api url
+      api:
+        description: docker or github
         required: true
         type: string
       dry-run:
@@ -22,7 +18,7 @@ name: Prune images from a container registry
         required: false
         type: boolean
       max-age:
-        description: prune versions older that max age days
+        description: prune versions older than max age days
         required: true
         type: number
       repository:
@@ -49,9 +45,9 @@ jobs:
       packages: write
     steps:
     - name: Login to docker api
-      if: inputs.api-type == 'docker-v2' && ! inputs.dry-run
+      if: inputs.api == 'docker' && ! inputs.dry-run
       env:
-        API_URL: ${{ inputs.api-url }}
+        API_URL: https://hub.docker.com
         USERNAME: ${{ inputs.username }}
         TOKEN: ${{ secrets.token }}
       run: |
@@ -61,7 +57,7 @@ jobs:
                 --request POST \
                 --data "{\"username\":\"${USERNAME}\",\"password\":\"${TOKEN}\"}" \
                 --header "Content-Type: application/json" \
-                "${API_URL}/users/login" \
+                "${API_URL}/v2/users/login" \
         )" || ! token="$(jq -r ".token" <<< "${response}")" || [[ -z ${token} ]] || [[ ${token} == "null" ]]; then
             echo "::error::Failed to authenticate with docker hub"
             exit 1
@@ -69,18 +65,27 @@ jobs:
 
         echo "::add-mask::${token}"
         echo "JWT_TOKEN=${token}" >> "${GITHUB_ENV}"
-    - name: Collect tags using docker api
-      if: inputs.api-type == 'docker-v2'
+    - name: Check repository ownership
+      if: inputs.api == 'github'
       env:
-        API_URL: ${{ inputs.api-url }}
+        REPO: ${{ inputs.repository }}
+        USERNAME: ${{ inputs.username }}
+      run: |
+        repository="$(basename "${REPO}")"
+        if [[ "${USERNAME}/${repository}" != "${REPO}" ]]; then
+            echo "::error::Attempting to prune ${REPO}, but user ${USERNAME} is not the repository owner!"
+            exit 1
+        fi
+    - name: Collect tags using docker api
+      if: inputs.api == 'docker'
+      env:
+        API_URL: https://hub.docker.com
         USERNAME: ${{ inputs.username }}
         REPO: ${{ inputs.repository }}
       run: |
-        repository="$(basename "${REPO}")"
-
         declare -a versions_array=()
 
-        next_url="${API_URL}/repositories/${USERNAME}/${repository}/tags/?page_size=${PAGE_SIZE}&page=1"
+        next_url="${API_URL}/v2/repositories/${REPO}/tags/?page_size=${PAGE_SIZE}&page=1"
         while [[ -n ${next_url} ]]; do
             if ! response_body="$(curl --silent --show-error --fail "${next_url}")"; then
                 echo "::error::Failed to fetch tags"
@@ -104,18 +109,14 @@ jobs:
 
         echo "VERSIONS=${versions_array[*]}" >> "${GITHUB_ENV}"
     - name: Collect tags using github api
-      if: inputs.api-type == 'github'
+      if: inputs.api == 'github'
       env:
-        API_URL: ${{ inputs.api-url }}
+        API_URL: ${{ github.api_url }}
         REPO: ${{ inputs.repository }}
         USERNAME: ${{ inputs.username }}
         TOKEN: ${{ secrets.token }}
       run: |
         repository="$(basename "${REPO}")"
-
-        if [[ "${USERNAME}/${repository}" != "${REPO}" ]]; then
-            echo "::warning::Pruning ${REPO}, but user ${USERNAME} is not the repository owner!"
-        fi
 
         declare -a versions_array=()
 
@@ -193,13 +194,12 @@ jobs:
 
         echo "VERSIONS=${versions_array[*]}" >> "${GITHUB_ENV}"
     - name: Delete tags using docker api
-      if: inputs.api-type == 'docker-v2' && ! inputs.dry-run
+      if: inputs.api == 'docker' && ! inputs.dry-run
       env:
-        API_URL: ${{ inputs.api-url }}
+        API_URL: https://hub.docker.com
         USERNAME: ${{ inputs.username }}
         REPO: ${{ inputs.repository }}
       run: |
-        repository="$(basename "${REPO}")"
         IFS=" " read -ra versions_array <<< "${VERSIONS}"
         for i in $(seq 1 ${#versions_array[@]}); do
             IFS=":" read -r id tag age status <<< "${versions_array[$((i - 1))]}"
@@ -211,17 +211,17 @@ jobs:
                     --write-out "%{http_code}" \
                     --request DELETE \
                     --header "Authorization: Bearer ${JWT_TOKEN}" \
-                    "${API_URL}/repositories/${USERNAME}/${repository}/tags/${id}/"
+                    "${API_URL}/v2/repositories/${REPO}/tags/${id}/"
             )" || [[ ${http_code} -ne 204 ]]; then
                 versions_array["$((i - 1))"]="${id}:${tag}:${age}:delete_failed"
-                echo "::warning::Failed to delete ${USERNAME}/${repository}:${id} (HTTP ${http_code})"
+                echo "::warning::Failed to delete ${REPO}:${id} (HTTP ${http_code})"
             fi
         done
         echo "VERSIONS=${versions_array[*]}" >> "${GITHUB_ENV}"
     - name: Delete tags using github api
-      if: inputs.api-type == 'github' && ! inputs.dry-run
+      if: inputs.api == 'github' && ! inputs.dry-run
       env:
-        API_URL: ${{ inputs.api-url }}
+        API_URL: ${{ github.api_url }}
         REPO: ${{ inputs.repository }}
         USERNAME: ${{ inputs.username }}
         TOKEN: ${{ secrets.token }}
@@ -248,7 +248,7 @@ jobs:
         done
         echo "VERSIONS=${versions_array[*]}" >> "${GITHUB_ENV}"
     - name: Reduce version tags
-      if: inputs.api-type == 'github'
+      if: inputs.api == 'github'
       run: |
         IFS=" " read -ra versions_array <<< "${VERSIONS}"
         for i in $(seq 1 ${#versions_array[@]}); do
