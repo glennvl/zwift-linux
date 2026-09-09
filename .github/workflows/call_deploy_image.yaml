@@ -3,6 +3,10 @@ name: Deploy zwift image
 'on':
   workflow_call:
     inputs:
+      image:
+        description: image to deploy
+        required: true
+        type: string
       registry:
         description: container registry to deploy to
         required: true
@@ -11,16 +15,12 @@ name: Deploy zwift image
         description: username for container registry
         required: true
         type: string
-      image:
-        description: image to deploy
-        required: true
-        type: string
       repository:
         description: repository to deploy to
         required: true
         type: string
       tag:
-        description: image tag
+        description: tag to create
         required: true
         type: string
     secrets:
@@ -47,11 +47,9 @@ jobs:
         REPO: ${{ inputs.repository }}
         TAG: ${{ inputs.tag }}
       run: |
-        repository="$(basename "${REPO}")"
-        deploy_target="${REGISTRY}/${USERNAME}/${repository}"
         docker pull "${IMAGE}"
-        docker tag "${IMAGE}" "${deploy_target}:${TAG}"
-        docker tag "${IMAGE}" "${deploy_target}:latest"
-        docker push "${deploy_target}:${TAG}"
-        docker push "${deploy_target}:latest"
-        echo "Deployed Zwift image: ${deploy_target}:${TAG}" >> "${GITHUB_STEP_SUMMARY}"
+        docker tag "${IMAGE}" "${REGISTRY}/${REPO}:${TAG}"
+        docker tag "${IMAGE}" "${REGISTRY}/${REPO}:latest"
+        docker push "${REGISTRY}/${REPO}:${TAG}"
+        docker push "${REGISTRY}/${REPO}:latest"
+        echo "Deployed Zwift image: ${REGISTRY}/${REPO}:${TAG}" >> "${GITHUB_STEP_SUMMARY}"
