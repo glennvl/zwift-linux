@@ -17,6 +17,7 @@ jobs:
     name: docker.io
     uses: ./.github/workflows/call_prune_container_registry.yaml
     with:
+      environment: production
       api: docker
       repository: ${{ vars.DOCKERHUB_REPOSITORY }}
       username: ${{ vars.DOCKERHUB_USERNAME }}
@@ -29,6 +30,7 @@ jobs:
     name: ghcr.io
     uses: ./.github/workflows/call_prune_container_registry.yaml
     with:
+      environment: staging
       api: github
       repository: ${{ github.repository }}
       username: ${{ github.repository_owner }}
