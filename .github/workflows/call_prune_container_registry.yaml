@@ -3,6 +3,10 @@ name: Prune images from a container registry
 'on':
   workflow_call:
     inputs:
+      environment:
+        description: deployment environment
+        required: true
+        type: string
       api:
         description: docker or github
         required: true
@@ -40,6 +44,9 @@ jobs:
   prune:
     name: Prune
     runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      deployment: false
     permissions:
       contents: read
       packages: write
