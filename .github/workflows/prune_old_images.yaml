@@ -17,9 +17,8 @@ jobs:
     name: docker.io
     uses: ./.github/workflows/call_prune_container_registry.yaml
     with:
-      api-url: https://hub.docker.com/v2
-      api-type: docker-v2
-      repository: ${{ github.repository }}
+      api: docker
+      repository: ${{ vars.DOCKERHUB_REPOSITORY }}
       username: ${{ vars.DOCKERHUB_USERNAME }}
       dry-run: &dry_run ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
       keep-latest: true
@@ -30,8 +29,7 @@ jobs:
     name: ghcr.io
     uses: ./.github/workflows/call_prune_container_registry.yaml
     with:
-      api-url: https://api.github.com
-      api-type: github
+      api: github
       repository: ${{ github.repository }}
       username: ${{ github.repository_owner }}
       dry-run: *dry_run
