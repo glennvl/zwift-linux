@@ -122,6 +122,7 @@ jobs:
         REPO: ${{ inputs.repository }}
         USERNAME: ${{ inputs.username }}
         TOKEN: ${{ secrets.token }}
+        RUNNER_TMP_DIR: ${{ runner.temp }}
       run: |
         repository="$(basename "${REPO}")"
 
@@ -129,7 +130,7 @@ jobs:
 
         next_url="${API_URL}/users/${USERNAME}/packages/container/${repository}/versions?per_page=${PAGE_SIZE}&page=1"
         while [[ -n ${next_url} ]]; do
-            response_body="$(mktemp)"
+            response_body="$(mktemp --tmpdir="${RUNNER_TMP_DIR}")"
 
             if ! response_headers="$(
                 curl \
