@@ -1,0 +1,54 @@
+---
+name: Docker save artifact
+description: Save a docker image in artifacts
+inputs:
+  image:
+    description: image to store in artifacts
+    required: true
+  tags:
+    description: csv list of tags to create when loading the image
+    default: ''
+    required: false
+runs:
+  using: composite
+  steps:
+  - name: Export image
+    env:
+      IMAGE: ${{ inputs.image }}
+      TAGS: ${{ inputs.tags }}
+    shell: bash
+    run: |
+      mkdir -p export
+
+      echo "${IMAGE}" > export/image.name
+      echo "${TAGS}" > export/tags.csv
+
+      if digest="$(docker inspect --format='{{ index .RepoDigests 0 }}' "${IMAGE}" 2> /dev/null)" && [[ -n ${digest} ]]; then
+          echo "Image ${IMAGE} already exists in registry, skipping archive"
+          echo "${digest}" > export/image.digest
+      else
+          echo "Image ${IMAGE} does not exist in registry, exporting to archive"
+          docker save --output export/image.tar "${IMAGE}"
+      fi
+  - name: Upload image artifacts
+    id: image-artifacts
+    uses: actions/upload-artifact@v7
+    with:
+      name: docker-image-export-archive
+      retention-days: 1
+      path: |
+        export/image.name
+        export/image.digest
+        export/image.tar
+        export/tags.csv
+  - name: Persist image artifacts id
+    env:
+      ARTIFACT_ID: ${{ steps.image-artifacts.outputs.artifact-id }}
+    shell: bash
+    run: |
+      echo "${ARTIFACT_ID}" > export/artifact.id
+  - name: Create artifact for id
+    uses: actions/upload-artifact@v7
+    with:
+      name: docker-image-export-id
+      path: export/artifact.id
