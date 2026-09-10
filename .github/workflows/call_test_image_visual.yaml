@@ -2,11 +2,6 @@
 name: Zwift visual test
 'on':
   workflow_call:
-    inputs:
-      image:
-        description: zwift image to test
-        required: true
-        type: string
 env:
   IMAGE_MASK: rectangle 25,425 775,500
   MAX_DEVIATION: 5%
@@ -24,9 +19,12 @@ jobs:
       with:
         sparse-checkout: tests/zwift-visual-test/reference-screenshot.png
         sparse-checkout-cone-mode: false
+    - name: Import image
+      id: import
+      uses: $/.github/actions/docker-load-artifact
     - name: Start Zwift and capture screenshot
       env:
-        IMAGE: ${{ inputs.image }}
+        IMAGE: ${{ steps.import.outputs.image }}
       run: |
         xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
             docker run \
