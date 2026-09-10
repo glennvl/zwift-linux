@@ -1,0 +1,109 @@
+---
+name: Docker load artifact
+description: Load a docker image from artifacts
+inputs:
+  run-id:
+    description: download artifacts from a different workflow run
+    required: false
+  github-token:
+    description: required for downloading from a different workflow run
+    required: false
+outputs:
+  artifact-id:
+    description: artifact id of the docker image artifact
+    value: ${{ steps.artifact-id.outputs.id }}
+  image:
+    description: image loaded from artifacts
+    value: ${{ steps.import.outputs.image }}
+  tags:
+    description: csv list of extra tags that were created
+    value: ${{ steps.tag.outputs.list }}
+runs:
+  using: composite
+  steps:
+  - name: Download image artifacts
+    uses: actions/download-artifact@v8
+    with:
+      pattern: docker-image-export-*
+      path: ${{ runner.temp }}/artifacts
+      merge-multiple: true
+      run-id: ${{ inputs.run-id }}
+      github-token: ${{ inputs.github-token }}
+  - name: List downloaded artifacts
+    env:
+      ARTIFACTS_PATH: ${{ runner.temp }}/artifacts
+    shell: bash
+    run: ls -alR "${ARTIFACTS_PATH}"
+  - name: Extract artifact id
+    id: artifact-id
+    env:
+      ARTIFACTS_PATH: ${{ runner.temp }}/artifacts
+    shell: bash
+    run: |
+      if [[ -f ${ARTIFACTS_PATH}/artifact.id ]] \
+          && artifact_id="$(< "${ARTIFACTS_PATH}/artifact.id")" \
+          && [[ -n ${artifact_id} ]]; then
+          echo "id=${artifact_id}" >> "${GITHUB_OUTPUT}"
+      else
+          echo "::error::Artifact id not found!"
+          exit 1
+      fi
+  - name: Import image
+    id: import
+    env:
+      ARTIFACTS_PATH: ${{ runner.temp }}/artifacts
+    shell: bash
+    run: |
+      if [[ ! -f ${ARTIFACTS_PATH}/image.name ]] \
+          || ! image="$(< "${ARTIFACTS_PATH}/image.name")" \
+          || [[ -z ${image} ]]; then
+          echo "::error::Image name not found!"
+          exit 1
+      fi
+
+      echo "Importing image: ${image}"
+      if [[ -f ${ARTIFACTS_PATH}/image.digest ]] \
+          && digest="$(< "${ARTIFACTS_PATH}/image.digest")" \
+          && [[ -n ${digest} ]]; then
+          echo "Pulling existing image from digest ${digest}"
+          docker pull "${digest}"
+          docker tag "${digest}" "${image}"
+      elif [[ -f "${ARTIFACTS_PATH}/image.tar" ]]; then
+          echo "Loading image from archive"
+          docker load --input "${ARTIFACTS_PATH}/image.tar"
+      else
+          echo "::error::Neither an image digest nor an image archive were found!"
+          exit 1
+      fi
+
+      echo "image=${image}" > "${GITHUB_OUTPUT}"
+  - name: Verify image imported
+    env:
+      IMAGE: ${{ steps.import.outputs.image }}
+    shell: bash
+    run: |
+      if ! imported_image="$(
+          docker images --format='{{ .Repository }}:{{ .Tag }}' --filter="reference=${IMAGE}"
+      )" || [[ ${imported_image} != "${IMAGE}" ]]; then
+          echo "::error::Failed to import image ${IMAGE}!"
+          exit 1
+      fi
+  - name: Create tags
+    id: tag
+    env:
+      ARTIFACTS_PATH: ${{ runner.temp }}/artifacts
+      IMAGE: ${{ steps.import.outputs.image }}
+    shell: bash
+    run: |
+      if [[ ! -f ${ARTIFACTS_PATH}/tags.csv ]] || ! tags="$(< "${ARTIFACTS_PATH}/tags.csv")"; then
+          echo "::error::Image tags not found!"
+          exit 1
+      fi
+
+      IFS="," read -ra tags_array <<< "${tags}"
+      for tag in "${tags_array[@]}"; do
+          echo "Creating tag: ${IMAGE} -> ${tag}"
+          docker tag "${IMAGE}" "${tag}"
+      done
+
+      echo "list=${tags}" >> "${GITHUB_OUTPUT}"
