@@ -11,10 +11,6 @@ name: Deploy zwift image
         description: container registry repository url
         required: false
         type: string
-      image:
-        description: image to deploy
-        required: true
-        type: string
       registry:
         description: container registry to deploy to
         required: true
@@ -31,6 +27,10 @@ name: Deploy zwift image
         description: tag to create
         required: true
         type: string
+    outputs:
+      image:
+        description: zwift image
+        value: ${{ jobs.deploy.outputs.image }}
     secrets:
       token:
         description: access token for container registry
@@ -42,7 +42,12 @@ jobs:
     environment:
       name: ${{ inputs.environment }}
       url: ${{ inputs.environment-url }}
+    outputs:
+      image: ${{ steps.deploy.outputs.image }}
     steps:
+    - name: Import image
+      id: import
+      uses: $/.github/actions/docker-load-artifact
     - name: Login to container registry
       uses: docker/login-action@v4
       with:
@@ -52,15 +57,15 @@ jobs:
     - name: Deploy image
       id: deploy
       env:
-        IMAGE: ${{ inputs.image }}
+        IMAGE: ${{ steps.import.outputs.image }}
         REGISTRY: ${{ inputs.registry }}
-        USERNAME: ${{ inputs.username }}
         REPO: ${{ inputs.repository }}
         TAG: ${{ inputs.tag }}
       run: |
-        docker pull "${IMAGE}"
         docker tag "${IMAGE}" "${REGISTRY}/${REPO}:${TAG}"
         docker tag "${IMAGE}" "${REGISTRY}/${REPO}:latest"
         docker push "${REGISTRY}/${REPO}:${TAG}"
         docker push "${REGISTRY}/${REPO}:latest"
-        echo "Deployed Zwift image: ${REGISTRY}/${REPO}:${TAG}" >> "${GITHUB_STEP_SUMMARY}"
+        deployed_image="${REGISTRY}/${REPO}:${TAG}"
+        echo "Deployed Zwift image: ${deployed_image}" >> "${GITHUB_STEP_SUMMARY}"
+        echo "image=${deployed_image}" >> "${GITHUB_OUTPUT}"

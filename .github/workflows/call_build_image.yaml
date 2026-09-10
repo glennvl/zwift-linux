@@ -3,32 +3,20 @@ name: Build zwift image
 'on':
   workflow_call:
     inputs:
-      environment:
-        description: deployment environment
-        required: true
-        type: string
-      environment-url:
-        description: container registry repository url
-        required: false
-        type: string
-      repository:
-        description: github repository
-        required: true
-        type: string
-      registry:
-        description: container registry
-        default: ghcr.io
-        required: false
-        type: string
-      username:
-        description: username for container registry
-        required: true
-        type: string
       rebuild:
         description: rebuild the image even if not needed
         default: false
         required: false
         type: boolean
+      registry:
+        description: container registry
+        default: ghcr.io
+        required: false
+        type: string
+      repository:
+        description: image repository
+        required: true
+        type: string
     outputs:
       image:
         description: zwift image
@@ -39,21 +27,11 @@ name: Build zwift image
       version:
         description: bundled zwift version
         value: ${{ jobs.build.outputs.version }}
-    secrets:
-      token:
-        description: access token for container registry
-        required: true
 jobs:
   build:
     name: Build if needed
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    environment:
-      name: ${{ inputs.environment }}
-      url: ${{ inputs.environment-url }}
-    permissions:
-      contents: read
-      packages: write
     outputs:
       image: ${{ steps.report.outputs.image }}
       updated: ${{ steps.report.outputs.updated }}
@@ -63,16 +41,9 @@ jobs:
       run: sudo apt-get install -y x11-xserver-utils x11-apps
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Login to container registry
-      uses: docker/login-action@v4
-      with:
-        registry: ${{ inputs.registry }}
-        username: ${{ inputs.username }}
-        password: ${{ secrets.token }}
     - name: Gather metadata
       env:
         REGISTRY: ${{ inputs.registry }}
-        USERNAME: ${{ inputs.username }}
         REPO: ${{ inputs.repository }}
         ZWIFT_VERSION_URL: https://cdn.zwift.com/gameassets/Zwift_Updates_Root/Zwift_ver_cur.xml
       run: |
@@ -262,28 +233,39 @@ jobs:
             echo "NEXT_IMAGE=${IMAGE}:${TAG}"
             echo "ZWIFT_UPDATED=1"
         ) >> "${GITHUB_ENV}"
-    - name: Push to container registry
-      if: env.NEXT_IMAGE != env.BASE_IMAGE
+    - name: Create tag list
       run: |
-        docker tag "${IMAGE}:${TAG}" "${IMAGE}:${COMMIT}"
-        docker tag "${IMAGE}:${TAG}" "${IMAGE}:${DOCKERFILE}"
-        docker tag "${IMAGE}:${TAG}" "${IMAGE}:latest"
-        docker push "${IMAGE}:${TAG}"
-        docker push "${IMAGE}:${COMMIT}"
-        docker push "${IMAGE}:${DOCKERFILE}"
-        docker push "${IMAGE}:latest"
+        declare -a tags=()
+
+        if [[ ${NEXT_IMAGE} != "${BASE_IMAGE}" ]]; then
+            tags+=("${IMAGE}:latest")
+            tags+=("${IMAGE}:${TAG}")
+            tags+=("${IMAGE}:${COMMIT}")
+            tags+=("${IMAGE}:${DOCKERFILE}")
+        fi
+
+        updated=0
+        if [[ ${IMAGE_REBUILT} -eq 1 ]] || [[ ${SCRIPTS_UPDATED} -eq 1 ]] || [[ ${ZWIFT_UPDATED} -eq 1 ]]; then
+            updated=1
+        fi
+
+        printf -v tag_csv '%s,' "${tags[@]}"
+
+        ( echo "TAGS=${tag_csv%,}"; echo "IMAGE_UPDATED=${updated}" ) >> "${GITHUB_ENV}"
+    - name: Export image
+      uses: $/.github/actions/docker-save-artifact
+      with:
+        local-image: ${{ env.IMAGE_UPDATED == '1' && format('{0}:{1}', env.IMAGE, env.TAG) || '' }}
+        remote-image: ${{ env.IMAGE_UPDATED == '0' && env.BASE_IMAGE || '' }}
+        tags: ${{ env.TAGS }}
     - name: Report
       id: report
       run: |
-        updated=0
-
         ( echo "### Building image 🏗️"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
 
         if [[ ${IMAGE_REBUILT} -eq 1 ]]; then
-            updated=1
             echo "Performed full rebuild!" >> "${GITHUB_STEP_SUMMARY}"
         elif [[ ${SCRIPTS_UPDATED} -eq 1 ]] || [[ ${ZWIFT_UPDATED} -eq 1 ]]; then
-            updated=1
             ( echo "Updated image **${BASE_IMAGE}**:"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
             [[ ${SCRIPTS_UPDATED} -eq 1 ]] && echo "- Updated scripts" >> "${GITHUB_STEP_SUMMARY}"
             [[ ${ZWIFT_UPDATED} -eq 1 ]] && echo "- Updated Zwift to v${VERSION}" >> "${GITHUB_STEP_SUMMARY}"
@@ -296,7 +278,7 @@ jobs:
         if [[ ${NEXT_IMAGE} == "${BASE_IMAGE}" ]]; then
             echo "Nothing to do, tag **${IMAGE}:${TAG}** already exists." >> "${GITHUB_STEP_SUMMARY}"
         else
-            if [[ ${updated} -eq 0 ]]; then
+            if [[ ${IMAGE_UPDATED} -eq 0 ]]; then
                 echo "Created additional tags for **${BASE_IMAGE}**:" >> "${GITHUB_STEP_SUMMARY}"
             else
                 echo "Created tags:" >> "${GITHUB_STEP_SUMMARY}"
@@ -314,6 +296,6 @@ jobs:
 
         (
             echo "image=${IMAGE}:${TAG}"
-            echo "updated=${updated}"
+            echo "updated=${IMAGE_UPDATED}"
             echo "version=${VERSION}"
         ) >> "${GITHUB_OUTPUT}"

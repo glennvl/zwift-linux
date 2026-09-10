@@ -22,23 +22,15 @@ jobs:
       queue: max
     uses: ./.github/workflows/call_build_image.yaml
     with:
-      environment: staging
-      environment-url: ${{ format('https://ghcr.io/{0}', github.repository) }}
-      rebuild: true # TODO use condition on next line
-      # rebuild: ${{ ( github.event_name == 'schedule' && github.event.schedule == '0 0 1 */3 *' ) || ( github.event_name ==
-      #   'workflow_dispatch' && inputs.rebuild ) }}
       registry: ghcr.io
       repository: ${{ github.repository }}
-      username: ${{ github.actor }}
-    secrets:
-      token: ${{ secrets.GITHUB_TOKEN }}
+      rebuild: ${{ ( github.event_name == 'schedule' && github.event.schedule == '0 0 1 */3 *' ) || ( github.event_name ==
+        'workflow_dispatch' && inputs.rebuild ) }}
   test:
     name: Test
     if: github.event_name != 'schedule' || needs.build.outputs.updated == '1'
     needs: build
     uses: ./.github/workflows/call_test_image_visual.yaml
-    with:
-      image: ${{ needs.build.outputs.image }}
   deploy:
     name: Deploy
     if: needs.build.outputs.updated == '1' # TODO && github.event_name != 'pull_request'
@@ -51,8 +43,7 @@ jobs:
     uses: ./.github/workflows/call_deploy_image.yaml
     with:
       environment: production
-      environment-url: ${{ format('https://hub.docker.com/r/{0}/tags', vars.DOCKERHUB_REPOSITORY) }}
-      image: ${{ needs.build.outputs.image }}
+      environment-url: https://hub.docker.com/r/${{ vars.DOCKERHUB_REPOSITORY }}/tags
       registry: docker.io
       username: ${{ vars.DOCKERHUB_USERNAME }}
       repository: ${{ vars.DOCKERHUB_REPOSITORY }}
