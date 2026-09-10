@@ -1,0 +1,69 @@
+---
+name: Push to staging
+'on':
+  workflow_run:
+    workflows:
+    - Build 🡺 Test 🡺 Deploy
+    types:
+    - completed
+jobs:
+  push-to-staging:
+    name: Stage image
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: build
+      queue: max
+    permissions:
+      actions: write
+      contents: read
+      packages: write
+    environment:
+      name: staging
+      url: https://ghcr.io/${{ github.repository }}
+    steps:
+    - name: Import image
+      id: import
+      uses: $/.github/actions/docker-load-artifact
+      with:
+        run-id: ${{ github.event.workflow_run.id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+    - name: Login to container registry
+      if: steps.import.outputs.tags != ''
+      uses: docker/login-action@v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Push tags
+      if: steps.import.outputs.tags != ''
+      env:
+        TAGS: ${{ steps.import.outputs.tags }}
+      run: |
+        IFS="," read -ra tags_array <<< "${TAGS}"
+        for tag in "${tags_array[@]}"; do
+            docker push "${tag}"
+        done
+    - name: Delete image artifact
+      env:
+        ARTIFACT_ID: ${{ steps.import.outputs.artifact-id }}
+        API_URL: ${{ github.api_url }}
+        GITHUB_API_VERSION: '2026-03-10'
+        REPOSITORY: ${{ github.repository }}
+        TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        if http_code="$(
+            curl \
+                --silent \
+                --output /dev/null \
+                --write-out "%{http_code}" \
+                --request DELETE \
+                --header "Authorization: Bearer ${TOKEN}" \
+                --header "Accept: application/vnd.github+json" \
+                --header "X-GitHub-Api-Version: ${GITHUB_API_VERSION}" \
+                "${API_URL}/repos/${REPOSITORY}/actions/artifacts/${ARTIFACT_ID}"
+        )" && [[ ${http_code} -eq 204 ]]; then
+            echo "Deleted artifact ${ARTIFACT_ID}"
+        else
+            echo "::warning::Failed to delete artifact ${ARTIFACT_ID} (HTTP ${http_code})"
+        fi
