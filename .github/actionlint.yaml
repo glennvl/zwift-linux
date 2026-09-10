@@ -5,3 +5,6 @@ paths:
     # actionlint does not known about concurrency.queue
     # https://github.com/rhysd/actionlint/issues/657
     - unexpected key "queue" for "concurrency" section.*
+    # actionlint does not known about self-repository uses
+    # https://github.com/rhysd/actionlint/issues/711
+    - specifying action "\$/.+" in invalid format because ref is missing
