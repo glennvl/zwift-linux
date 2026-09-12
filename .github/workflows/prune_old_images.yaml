@@ -1,0 +1,41 @@
+---
+name: Prune old images
+'on':
+  pull_request: # TODO delete this trigger
+  schedule:
+  - cron: 0 0 * * 0 # weekly on Sundays
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: list which tags would be pruned
+        required: true
+        type: boolean
+concurrency:
+  group: prune
+jobs:
+  prune-dockerhub:
+    name: docker.io
+    uses: ./.github/workflows/call_prune_container_registry.yaml
+    with:
+      environment: production
+      api: docker
+      repository: ${{ vars.DOCKERHUB_REPOSITORY }}
+      username: ${{ vars.DOCKERHUB_USERNAME }}
+      dry-run: &dry_run ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      keep-latest: true
+      max-age: 365 # TODO decide max age
+    secrets:
+      token: ${{ secrets.DOCKERHUB_TOKEN }}
+  prune-ghcr:
+    name: ghcr.io
+    uses: ./.github/workflows/call_prune_container_registry.yaml
+    with:
+      environment: staging
+      api: github
+      repository: ${{ github.repository }}
+      username: ${{ github.repository_owner }}
+      dry-run: *dry_run
+      keep-latest: true
+      max-age: 30 # TODO decide max age
+    secrets:
+      token: ${{ secrets.GITHUB_TOKEN }}
