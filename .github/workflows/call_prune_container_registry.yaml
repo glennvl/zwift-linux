@@ -22,8 +22,14 @@ name: Prune images from a container registry
         required: false
         type: boolean
       max-age:
-        description: prune versions older than max age days
-        required: true
+        description: prune versions older than max age days (0 for no limit)
+        default: 0
+        required: false
+        type: number
+      max-count:
+        description: maximum number of versions to keep (0 for no limit)
+        default: 0
+        required: false
         type: number
       repository:
         description: repository to prune
@@ -184,19 +190,23 @@ jobs:
       env:
         KEEP_LATEST: ${{ inputs.keep-latest }}
         MAX_AGE_DAYS: ${{ inputs.max-age }}
+        MAX_COUNT: ${{ inputs.max-count }}
       run: |
         IFS=" " read -ra versions_array <<< "${VERSIONS}"
 
         today="$(date +%F)"
         today_epoch="$(date -d "${today}" +%s)"
+        keep=0
 
         for i in $(seq 1 ${#versions_array[@]}); do
             IFS=":" read -r id tag updated_epoch <<< "${versions_array[$((i - 1))]}"
             age_days="$(((today_epoch - updated_epoch) / 86400))"
             status="keep"
             [[ ${tag} == "[untagged]-${id}" ]] && status="delete"
-            [[ ${age} -gt ${MAX_AGE_DAYS} ]] && status="delete"
+            [[ ${MAX_AGE_DAYS} -gt 0 ]] && [[ ${age} -gt ${MAX_AGE_DAYS} ]] && status="delete"
+            [[ ${MAX_COUNT} -gt 0 ]] && [[ ${keep} -ge ${MAX_COUNT} ]] && status="delete"
             [[ ${KEEP_LATEST} == "true" ]] && [[ ",${tag}," == *,latest,* ]] && status="protected"
+            [[ ${status} != "delete" ]] && ((keep++)) || true
             versions_array["$((i - 1))"]="${id}:${tag}:${age_days}:${status}"
         done
 
@@ -274,14 +284,21 @@ jobs:
       env:
         DRY_RUN: ${{ inputs.dry-run }}
         MAX_AGE_DAYS: ${{ inputs.max-age }}
+        MAX_COUNT: ${{ inputs.max-count }}
         REPO: ${{ inputs.repository }}
       run: |
         if [[ ${DRY_RUN} == "true" ]]; then
             (echo "> Dry-run is active, no tags were actually deleted."; echo "") >> "${GITHUB_STEP_SUMMARY}"
         fi
 
+        [[ ${MAX_AGE_DAYS} -eq 0 ]] && days_limit="no limit" || days_limit="${MAX_AGE_DAYS} days"
+        [[ ${MAX_COUNT} -eq 0 ]] && count_limit="no limit" || count_limit="${MAX_COUNT}"
+
         (
-            echo "Pruned versions from ${REPO} that are older than ${MAX_AGE_DAYS} days."
+            echo "Pruned versions from ${REPO}."
+            echo ""
+            echo "- Maximum age: ${days_limit}"
+            echo "- Keeping versions: ${count_limit}"
             echo ""
             echo "| Version | Age (days) | Status |"
             echo "|:--------|-----------:|:------:|"
