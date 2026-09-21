@@ -3,6 +3,7 @@ name: Zwift visual test
 'on':
   workflow_call:
 env:
+  REFERENCE_SCREENSHOT: tests/zwift-visual-test/reference-screenshot.png
   IMAGE_MASK: rectangle 25,425 775,500
   MAX_DEVIATION: 5%
   NUM_SCREENSHOTS: 30
@@ -10,14 +11,14 @@ env:
 jobs:
   test:
     name: Visual test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Install dependencies
-      run: sudo apt-get install -y imagemagick x11-xserver-utils x11-apps
+      run: sudo apt-get install -y imagemagick
     - name: Checkout
       uses: actions/checkout@v7
       with:
-        sparse-checkout: tests/zwift-visual-test/reference-screenshot.png
+        sparse-checkout: ${{ env.REFERENCE_SCREENSHOT }}
         sparse-checkout-cone-mode: false
     - name: Import image
       id: import
@@ -31,6 +32,7 @@ jobs:
                 --rm \
                 -d \
                 --name zwift-visual-test \
+                --security-opt seccomp=unconfined \
                 -e DISPLAY=\${DISPLAY} \
                 -e XAUTHORITY=\${XAUTHORITY} \
                 -e CONTAINER_TOOL=docker \
@@ -41,7 +43,7 @@ jobs:
                 ${IMAGE}
             for i in \$(seq 1 ${NUM_SCREENSHOTS}); do
                 echo \"Taking screenshot \${i} of ${NUM_SCREENSHOTS}\"
-                import -window root zwift-screenshot-\$((i - 1)).png
+                magick import -window root zwift-screenshot-\$((i - 1)).png
                 sleep ${SCREENSHOT_DELAY}
             done
             docker kill zwift-visual-test || echo \"::warning::Zwift container crashed!\"
@@ -49,17 +51,17 @@ jobs:
     - name: Compare to reference screenshot
       run: |
         match_index="${NUM_SCREENSHOTS}"
-        convert tests/zwift-visual-test/reference-screenshot.png -draw "${IMAGE_MASK}" reference-normalized.png
+        magick -size 800x600 xc:white -draw "${IMAGE_MASK}" zwift-screenshot-mask.png
         for i in $(seq 0 "$((NUM_SCREENSHOTS - 1))"); do
-            convert "zwift-screenshot-${i}.png" -draw "${IMAGE_MASK}" screenshot-normalized.png
-            if different_pixels="$(compare \
+            if different_pixels="$(magick compare \
                 -metric AE \
                 -fuzz "${MAX_DEVIATION}" \
-                reference-normalized.png \
-                screenshot-normalized.png \
+                -read-mask zwift-screenshot-mask.png \
+                "${REFERENCE_SCREENSHOT}" \
+                "zwift-screenshot-${i}.png" \
                 screenshot-diff.png \
                 2>&1
-            )" && [[ ${different_pixels} == "0" ]]; then
+            )" && [[ ${different_pixels} == "0 (0)" ]]; then
                 echo "Checking screenshot $((i+1)) of ${NUM_SCREENSHOTS}: MATCH"
                 match_index="${i}"
                 break
@@ -79,4 +81,6 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: zwift-screenshots
-        path: '*.png'
+        path: |
+          ${{ env.REFERENCE_SCREENSHOT }}
+          *.png
