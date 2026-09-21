@@ -2,9 +2,14 @@
 paths:
   '**/*':
     ignore:
-    # actionlint does not known about concurrency.queue
+    # actionlint does not know about concurrency.queue
     # https://github.com/rhysd/actionlint/issues/657
     - unexpected key "queue" for "concurrency" section.*
-    # actionlint does not known about self-repository uses
+    # actionlint does not know about self-repository uses
     # https://github.com/rhysd/actionlint/issues/711
     - specifying action "\$/.+" in invalid format because ref is missing
+self-hosted-runner:
+  labels:
+  # actionlint does not know about ubuntu-26.04 runner
+  # https://github.com/rhysd/actionlint/issues/682
+  - ubuntu-26.04
