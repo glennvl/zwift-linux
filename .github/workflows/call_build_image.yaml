@@ -30,15 +30,13 @@ name: Build zwift image
 jobs:
   build:
     name: Build if needed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     outputs:
       image: ${{ steps.report.outputs.image }}
       updated: ${{ steps.report.outputs.updated }}
       version: ${{ steps.report.outputs.version }}
     steps:
-    - name: Install dependencies
-      run: sudo apt-get install -y x11-xserver-utils x11-apps
     - name: Checkout
       uses: actions/checkout@v7
     - name: Gather metadata
@@ -134,6 +132,7 @@ jobs:
         xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
             docker run \
                 --name zwift-build \
+                --security-opt seccomp=unconfined \
                 -e DISPLAY=\${DISPLAY} \
                 -e XAUTHORITY=\${XAUTHORITY} \
                 -e CONTAINER_TOOL=docker \
@@ -210,6 +209,7 @@ jobs:
         xvfb-run --auto-servernum --server-args="-ac -screen 0 800x600x24" bash -ec "
             docker run \
                 --name zwift-update \
+                --security-opt seccomp=unconfined \
                 -e DISPLAY=\${DISPLAY} \
                 -e XAUTHORITY=\${XAUTHORITY} \
                 -e CONTAINER_TOOL=docker \

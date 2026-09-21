@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     defaults:
       run:
         working-directory: docs
@@ -45,7 +45,7 @@ jobs:
       with:
         path: docs/_site
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: build
     environment:
       name: github-pages
