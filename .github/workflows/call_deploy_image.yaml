@@ -38,7 +38,7 @@ name: Deploy zwift image
 jobs:
   deploy:
     name: Deploy to container registry
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment:
       name: ${{ inputs.environment }}
       url: ${{ inputs.environment-url }}
