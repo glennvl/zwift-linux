@@ -49,7 +49,7 @@ env:
 jobs:
   prune:
     name: Prune
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     environment:
       name: ${{ inputs.environment }}
       deployment: false
