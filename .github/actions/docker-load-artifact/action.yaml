@@ -8,6 +8,10 @@ inputs:
   github-token:
     description: required for downloading from a different workflow run
     required: false
+  only-if-tags:
+    description: only import image if tags list is not empty
+    default: 'false'
+    required: false
 outputs:
   artifact-id:
     description: artifact id of the docker image artifact
@@ -17,7 +21,7 @@ outputs:
     value: ${{ steps.import.outputs.image }}
   tags:
     description: csv list of extra tags that were created
-    value: ${{ steps.tag.outputs.list }}
+    value: ${{ steps.tags.outputs.list }}
 runs:
   using: composite
   steps:
@@ -48,8 +52,21 @@ runs:
           echo "::error::Artifact id not found!"
           exit 1
       fi
+  - name: Get tags list
+    id: tags
+    env:
+      ARTIFACTS_PATH: ${{ runner.temp }}/artifacts
+    shell: bash
+    run: |
+      if [[ -f ${ARTIFACTS_PATH}/tags.csv ]] && tags="$(< "${ARTIFACTS_PATH}/tags.csv")"; then
+          echo "list=${tags}" >> "${GITHUB_OUTPUT}"
+      else
+          echo "::error::Image tags not found!"
+          exit 1
+      fi
   - name: Import image
     id: import
+    if: inputs.only-if-tags == 'false' || steps.tags.outputs.list != ''
     env:
       ARTIFACTS_PATH: ${{ runner.temp }}/artifacts
     shell: bash
@@ -71,6 +88,7 @@ runs:
 
       echo "image=${image}" > "${GITHUB_OUTPUT}"
   - name: Verify image imported
+    if: inputs.only-if-tags == 'false' || steps.tags.outputs.list != ''
     env:
       IMAGE: ${{ steps.import.outputs.image }}
     shell: bash
@@ -82,21 +100,14 @@ runs:
           exit 1
       fi
   - name: Create tags
-    id: tag
+    if: steps.tags.outputs.list != ''
     env:
-      ARTIFACTS_PATH: ${{ runner.temp }}/artifacts
       IMAGE: ${{ steps.import.outputs.image }}
+      TAGS: ${{ steps.tags.outputs.list }}
     shell: bash
     run: |
-      if [[ ! -f ${ARTIFACTS_PATH}/tags.csv ]] || ! tags="$(< "${ARTIFACTS_PATH}/tags.csv")"; then
-          echo "::error::Image tags not found!"
-          exit 1
-      fi
-
-      IFS="," read -ra tags_array <<< "${tags}"
+      IFS="," read -ra tags_array <<< "${TAGS}"
       for tag in "${tags_array[@]}"; do
           echo "Creating tag: ${IMAGE} -> ${tag}"
           docker tag "${IMAGE}" "${tag}"
       done
-
-      echo "list=${tags}" >> "${GITHUB_OUTPUT}"
