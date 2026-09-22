@@ -33,7 +33,7 @@ jobs:
     uses: ./.github/workflows/call_test_image_visual.yaml
   deploy:
     name: Deploy
-    if: needs.build.outputs.updated == '1' # TODO && github.event_name != 'pull_request'
+    if: needs.build.outputs.updated == '1' && github.event_name != 'pull_request'
     needs:
     - build
     - test
