@@ -23,7 +23,7 @@ jobs:
       username: ${{ vars.DOCKERHUB_USERNAME }}
       dry-run: &dry_run ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
       keep-latest: true
-      max-age: 365 # TODO decide max age
+      max-age: 365
     secrets:
       token: ${{ secrets.DOCKERHUB_TOKEN }}
   prune-ghcr:
