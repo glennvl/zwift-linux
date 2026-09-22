@@ -3,11 +3,11 @@ name: Docker save artifact
 description: Save a docker image in artifacts
 inputs:
   local-image:
-    description: image to persist is local, store in artifacts
+    description: use if image to persist is local, store in artifacts
     default: ''
     required: false
   remote-image:
-    description: image to persist exists in container registry
+    description: use if image to persist exists in container registry
     default: ''
     required: false
   tags:
@@ -17,6 +17,19 @@ inputs:
 runs:
   using: composite
   steps:
+  - name: Validate inputs
+    env:
+      LOCAL_IMAGE: ${{ inputs.local-image }}
+      REMOTE_IMAGE: ${{ inputs.remote-image }}
+    shell: bash
+    run: |
+      if [[ -z ${LOCAL_IMAGE} ]] && [[ -z ${REMOTE_IMAGE} ]]; then
+          echo "::error::Neither local-image nor remote-image are set"
+          exit 1
+      elif [[ -n ${LOCAL_IMAGE} ]] && [[ -n ${REMOTE_IMAGE} ]] ; then
+          echo "::error::Both local-image and remote-image are set"
+          exit 1
+      fi
   - name: Export image
     env:
       LOCAL_IMAGE: ${{ inputs.local-image }}
@@ -25,16 +38,13 @@ runs:
     shell: bash
     run: |
       mkdir -p export
-      if [[ -n ${LOCAL_IMAGE} ]] && [[ -z ${REMOTE_IMAGE} ]]; then
+      if [[ -n ${LOCAL_IMAGE} ]]; then
           echo "Exporting ${IMAGE} to archive"
           docker save --output export/image.tar "${LOCAL_IMAGE}"
           echo "${LOCAL_IMAGE}" > export/image.name
-      elif [[ -z ${LOCAL_IMAGE} ]] && [[ -n ${REMOTE_IMAGE} ]]; then
+      else
           echo "Using ${REMOTE_IMAGE} from registry, skipping archive"
           echo "${REMOTE_IMAGE}" > export/image.name
-      else
-          echo "::error::Either local-image or remote-image has to be set"
-          exit 1
       fi
       echo "${TAGS}" > export/tags.csv
   - name: Upload image artifacts
