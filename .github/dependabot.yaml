@@ -7,26 +7,26 @@ updates:
   schedule:
     interval: weekly
     day: sunday
-    time: '05:00'
+    time: '05:17'
     timezone: UTC
 - package-ecosystem: docker
   directory: /src
   schedule:
     interval: weekly
     day: sunday
-    time: '05:00'
+    time: '05:17'
     timezone: UTC
 - package-ecosystem: github-actions
   directory: /
   schedule:
     interval: weekly
     day: sunday
-    time: '05:00'
+    time: '05:17'
     timezone: UTC
 - package-ecosystem: nix
   directory: /
   schedule:
     interval: weekly
     day: sunday
-    time: '05:00'
+    time: '05:17'
     timezone: UTC
