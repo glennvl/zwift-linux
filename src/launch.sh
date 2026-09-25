@@ -1,28 +1,13 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-readonly DEBUG="${DEBUG:-0}"
-if [[ ${DEBUG} -eq 1 ]]; then set -x; fi
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+readonly SCRIPT_DIR
 
-readonly COLORED_OUTPUT="${COLORED_OUTPUT:-0}"
-if [[ -t 1 ]] || [[ ${COLORED_OUTPUT} -eq 1 ]]; then
-    readonly COLOR_WHITE="\033[0;37m"
-    readonly COLOR_RED="\033[0;31m"
-    readonly COLOR_GREEN="\033[0;32m"
-    readonly COLOR_BLUE="\033[0;34m"
-    readonly COLOR_YELLOW="\033[0;33m"
-    readonly RESET_STYLE="\033[0m"
-else
-    readonly COLOR_WHITE=""
-    readonly COLOR_RED=""
-    readonly COLOR_GREEN=""
-    readonly COLOR_BLUE=""
-    readonly COLOR_YELLOW=""
-    readonly RESET_STYLE=""
-fi
+source "${SCRIPT_DIR}/lib-logging.sh"
+source "${SCRIPT_DIR}/lib-utils.sh"
+source "${SCRIPT_DIR}/lib-wine.sh"
 
-readonly VERBOSITY="${VERBOSITY:-1}"
-readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly ZWIFT_USERNAME="${ZWIFT_USERNAME:-}"
 readonly ZWIFT_PASSWORD="${ZWIFT_PASSWORD:-}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
@@ -32,66 +17,6 @@ readonly ZWIFT_INSTALL_DIR="${ZWIFT_INSTALL_DIR:?}"
 readonly ZWIFT_OLD_DATA_DIR="${WINE_USER_HOME:?}/Documents/Zwift"
 readonly ZWIFT_PREFS_FILE="${ZWIFT_DATA_DIR}/prefs.xml"
 readonly ZWIFT_VOLUME="${ZWIFT_VOLUME:-}"
-
-msgbox() {
-    local type="${1:?}" # Type: info, ok, warning, error, debug
-    local msg="${2:?}"  # Message: the message to display
-
-    local timestamp=""
-    [[ ${VERBOSITY} -ge 2 ]] && printf -v timestamp '%(%T)T|' -1
-
-    case ${type} in
-        info) [[ ${VERBOSITY} -ge 1 ]] && echo -e "${COLOR_BLUE}[${CONTAINER_TOOL}|${timestamp}*] ${msg}${RESET_STYLE}" ;;
-        ok) echo -e "${COLOR_GREEN}[${CONTAINER_TOOL}|${timestamp}✓] ${msg}${RESET_STYLE}" ;;
-        warning) echo -e "${COLOR_YELLOW}[${CONTAINER_TOOL}|${timestamp}!] ${msg}${RESET_STYLE}" ;;
-        error) echo -e "${COLOR_RED}[${CONTAINER_TOOL}|${timestamp}✗] ${msg}${RESET_STYLE}" >&2 ;;
-        debug) [[ ${VERBOSITY} -ge 3 ]] && echo -e "${COLOR_WHITE}[${CONTAINER_TOOL}|${timestamp}◉] ${msg}${RESET_STYLE}" ;;
-        *) echo "msgbox - unknown type ${type}" >&2 && exit 1 ;;
-    esac
-}
-
-wine_task_info() {
-    local task_name="${1:?}"
-    wine tasklist /fo list /fi "IMAGENAME eq ${task_name}"
-}
-
-wine_task_pid() {
-    local task_name="${1:?}"
-    wine_task_info "${task_name}" | grep -m1 -Po '^PID:[\t ]*\K[0-9]+'
-}
-
-is_wine_task_running() {
-    local task_name="${1:?}"
-    [[ -n $(wine_task_info "${task_name}" || true) ]]
-}
-
-kill_wine_tasks() {
-    for task in "${@}"; do
-        msgbox debug "Killing wine task '${task}'"
-        wine taskkill /f /im "${task}" > /dev/null 2>&1 || true
-    done
-}
-
-wait_until() {
-    local condition="${1:?}"
-    local timeout="${2:-20}"
-    local delay="${3:-0.1}"
-    local counter=1
-
-    while ! eval "${condition}" && [[ ${counter} -le ${timeout} ]]; do
-        msgbox debug "Waiting... (${counter}/${timeout})"
-        sleep "${delay}"
-        ((counter++))
-    done
-
-    eval "${condition}"
-}
-
-wait_until_wine_task_started() {
-    local task_name="${1:?}"
-    msgbox info "Waiting for ${task_name} to start..."
-    wait_until "is_wine_task_running ${task_name}"
-}
 
 ####################################
 #### Verify Zwift is installed #####
@@ -142,7 +67,7 @@ fi
 
 if [[ -n ${ZWIFT_USERNAME} ]] && [[ -n ${ZWIFT_PASSWORD} ]]; then
     msgbox info "Authenticating with Zwift"
-    if auth_token="$(zwift-auth)"; then
+    if auth_token="$(/opt/netbrain/zwift/authenticate.sh)"; then
         zwift_args+=(--token="${auth_token}")
     else
         msgbox warning "Authentication failed, manual login will be required"
@@ -191,7 +116,7 @@ msgbox ok "Zwift launcher started using wine"
 msgbox info "Starting Zwift using wine"
 
 declare -a zwift_cmd
-zwift_cmd=(wine start /d "${zwift_wine_dir}" /unix /bin/runfromprocess-rs.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
+zwift_cmd=(wine start /d "${zwift_wine_dir}" /unix /opt/run-from.exe "${launcher_pid}" ZwiftApp.exe "${zwift_args[@]}")
 
 if [[ ${ZWIFT_NO_GAMEMODE} -eq 1 ]]; then
     msgbox info "Not using gamemode"
