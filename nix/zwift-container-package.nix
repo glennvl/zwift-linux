@@ -2,6 +2,7 @@
   pkgs,
   image ? "",
   tag ? "",
+  enableUnstable ? "",
   dontCheck ? "",
   dontPull ? "",
   dontClean ? "",
@@ -34,6 +35,7 @@ let
   nixosRun = pkgs.writeShellScript "zwift-nixos.sh" ''
     ${pkgs.lib.optionalString (image != "") "export IMAGE='${image}'"}
     ${pkgs.lib.optionalString (tag != "") "export VERSION='${tag}'"}
+    ${pkgs.lib.optionalString (enableUnstable != "") "export ENABLE_UNSTABLE=${enableUnstable}"}
     ${pkgs.lib.optionalString (dontCheck != "") "export DONT_CHECK=${dontCheck}"}
     ${pkgs.lib.optionalString (dontPull != "") "export DONT_PULL=${dontPull}"}
     ${pkgs.lib.optionalString (dontClean != "") "export DONT_CLEAN=${dontClean}"}
