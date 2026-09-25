@@ -27,6 +27,7 @@ readonly ZWIFT_USERNAME="${ZWIFT_USERNAME:-}"
 readonly ZWIFT_PASSWORD="${ZWIFT_PASSWORD:-}"
 readonly ZWIFT_OVERRIDE_RESOLUTION="${ZWIFT_OVERRIDE_RESOLUTION:-}"
 readonly ZWIFT_NO_GAMEMODE="${ZWIFT_NO_GAMEMODE:-0}"
+readonly ZWIFT_FPS_LIMIT="${ZWIFT_FPS_LIMIT:-}"
 readonly ZWIFT_DATA_DIR="${ZWIFT_DATA_DIR:?}"
 readonly ZWIFT_INSTALL_DIR="${ZWIFT_INSTALL_DIR:?}"
 readonly ZWIFT_OLD_DATA_DIR="${WINE_USER_HOME:?}/Documents/Zwift"
@@ -198,6 +199,11 @@ if [[ ${ZWIFT_NO_GAMEMODE} -eq 1 ]]; then
 else
     msgbox info "Using gamemode"
     zwift_cmd=(/usr/games/gamemoderun "${zwift_cmd[@]}")
+fi
+
+if [[ -n ${ZWIFT_FPS_LIMIT} ]]; then
+    msgbox info "Limiting Zwift fps to ${ZWIFT_FPS_LIMIT}"
+    zwift_cmd=(strangle "${ZWIFT_FPS_LIMIT}" "${zwift_cmd[@]}")
 fi
 
 if ! "${zwift_cmd[@]}" || ! wait_until_wine_task_started ZwiftApp.exe; then
