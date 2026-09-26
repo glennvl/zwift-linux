@@ -8,7 +8,7 @@ name: Lint everything
 jobs:
   bash-lint:
     name: Bash - Lint with shellcheck
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -18,7 +18,7 @@ jobs:
       run: find . -path ./.git -prune -o -name "*.sh" -exec shellcheck {} +
   bash-check-formatted:
     name: Bash - Check formatting with shfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -33,7 +33,7 @@ jobs:
       run: shfmt -d .
   dockerfile-check-build:
     name: Dockerfile - Check with docker buildx
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -46,7 +46,7 @@ jobs:
         file: src/Dockerfile
   dockerfile-lint:
     name: Dockerfile - Lint with hadolint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -57,7 +57,7 @@ jobs:
         dockerfile: src/Dockerfile
   github-actions-lint:
     name: Github Actions - Lint with actionlint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -65,7 +65,7 @@ jobs:
       uses: devops-actions/actionlint@ec02b36684b2f574f1d219ad0a43b082e46bf3e4
   markdown-lint:
     name: Markdown - Lint with markdownlint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -76,7 +76,7 @@ jobs:
         globs: ''
   markdown-spellcheck:
     name: Markdown - Spellcheck with cspell
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -87,7 +87,7 @@ jobs:
         suggestions: true
   nix-flake-lint:
     name: Nix Flake - Lint with nil
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -99,7 +99,7 @@ jobs:
       run: nil diagnostics -- *.nix
   nix-flake-check-formatted:
     name: Nix Flake - Check formatting with nixfmt
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -111,7 +111,7 @@ jobs:
       run: treefmt -f nixfmt --ci
   nix-flake-check-build:
     name: Nix Flake - Try to build flake
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -123,7 +123,7 @@ jobs:
         nix build --no-write-lock-file --dry-run
   nix-flake-check-develop:
     name: Nix Flake - Try to run nix develop
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
@@ -135,7 +135,7 @@ jobs:
       run: nix develop -c true
   yaml-lint:
     name: Yaml - Lint with yamllint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
     - name: Checkout repository code
       uses: actions/checkout@v7
