@@ -22,9 +22,10 @@ else
 fi
 
 readonly VERBOSITY="${VERBOSITY:-1}"
-readonly ZWIFT_UID="${ZWIFT_UID:-$(id -u user)}"
-readonly ZWIFT_GID="${ZWIFT_GID:-$(id -g user)}"
-readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
+readonly HOST_UID="${HOST_UID:-$(id -u user)}"
+readonly HOST_GID="${HOST_GID:-$(id -g user)}"
+readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
+readonly XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-}"
 readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly ZWIFT_VOLUME="${ZWIFT_VOLUME:-}"
 
@@ -45,28 +46,18 @@ msgbox() {
     esac
 }
 
-###########################
-##### Configure Zwift #####
+command_exists() {
+    local cmd="${1:?}"
+    local cmd_path
+    cmd_path="$(command -v "${cmd}" 2> /dev/null)" && [[ -x ${cmd_path} ]]
+}
 
-# If Wayland Experimental need to blank DISPLAY here to enable Wayland.
-# NOTE: DISPLAY must be unset here before run_zwift to work
-#       Registry entries are set in the container install or won't work.
-if [[ ${WINE_EXPERIMENTAL_WAYLAND} -eq 1 ]]; then
-    unset DISPLAY
-fi
+nvidia_proprietary_driver() {
+    local nvidia_gpus
+    command_exists nvidia-smi && nvidia_gpus="$(nvidia-smi -L)" && [[ -n ${nvidia_gpus} ]]
+}
 
-############################################
-##### Clean install, update or launch? #####
-
-msgbox debug "Entrypoint script invoked with arguments: ${*:-none}"
-
-declare -a startup_cmd
-
-if [[ ${1:-} == "--install" ]] || [[ ${1:-} == "--update" ]]; then
-    startup_cmd=(/bin/update_zwift.sh "${1:-}")
-else
-    startup_cmd=(/bin/run_zwift.sh)
-fi
+declare -a run_as=()
 
 ######################################
 ##### Change ownership if needed #####
@@ -75,26 +66,26 @@ if [[ ${CONTAINER_TOOL} == "docker" ]]; then
     # with docker the container is launched as root
     # here we update ids and ownership so zwift can be launched as user instead
 
-    user_uid="$(id -u user)"
-    user_gid="$(id -g user)"
+    container_uid="$(id -u user)"
+    container_gid="$(id -g user)"
 
     should_change_user_ids() {
-        # ids should be updated if ZWIFT_UID:ZWIFT_GID is different from from user uid:gid
+        # ids should be updated if HOST_UID:HOST_GID is different from from user uid:gid
         # returns 0 if ids should be changed, 1 if not, so it can be used in an if
 
         local result=1
 
-        if [[ ! ${ZWIFT_UID} =~ ^[0-9]+$ ]]; then
-            msgbox warning "Ignoring ZWIFT_UID '${ZWIFT_UID}' because it is not a number"
-        elif [[ ${user_uid} -ne ${ZWIFT_UID} ]]; then
-            user_uid="${ZWIFT_UID}"
+        if [[ ! ${HOST_UID} =~ ^[0-9]+$ ]]; then
+            msgbox warning "Ignoring HOST_UID '${HOST_UID}' because it is not a number"
+        elif [[ ${container_uid} -ne ${HOST_UID} ]]; then
+            container_uid="${HOST_UID}"
             result=0
         fi
 
-        if [[ ! ${ZWIFT_GID} =~ ^[0-9]+$ ]]; then
-            msgbox warning "Ignoring ZWIFT_GID '${ZWIFT_GID}' because it is not a number"
-        elif [[ ${user_gid} -ne ${ZWIFT_GID} ]]; then
-            user_gid="${ZWIFT_GID}"
+        if [[ ! ${HOST_GID} =~ ^[0-9]+$ ]]; then
+            msgbox warning "Ignoring HOST_GID '${HOST_GID}' because it is not a number"
+        elif [[ ${container_gid} -ne ${HOST_GID} ]]; then
+            container_gid="${HOST_GID}"
             result=0
         fi
 
@@ -102,11 +93,11 @@ if [[ ${CONTAINER_TOOL} == "docker" ]]; then
     }
 
     change_user_ids() {
-        usermod -ou "${user_uid}" user || return 1
-        groupmod -og "${user_gid}" user || return 1
-        mkdir -p "/run/user/${user_uid}" || return 1
-        chown -R user:user "/run/user/${user_uid}" || return 1
-        sed -i "s|/run/user/1000|/run/user/${user_uid}|g" /etc/pulse/client.conf || return 1
+        usermod -ou "${container_uid}" user || return 1
+        groupmod -og "${container_gid}" user || return 1
+        mkdir -p "/run/user/${container_uid}" || return 1
+        chown -R user:user "/run/user/${container_uid}" || return 1
+        sed -i "s|/run/user/1000|/run/user/${container_uid}|g" /etc/pulse/client.conf || return 1
     }
 
     ownership_needs_update() {
@@ -131,7 +122,7 @@ if [[ ${CONTAINER_TOOL} == "docker" ]]; then
     }
 
     if should_change_user_ids; then
-        msgbox info "Changing user ids to ${user_uid}:${user_gid}"
+        msgbox info "Changing user ids to ${container_uid}:${container_gid}"
         if change_user_ids; then
             msgbox ok "Changed user ids"
         else
@@ -148,10 +139,39 @@ if [[ ${CONTAINER_TOOL} == "docker" ]]; then
         exit 1
     fi
 
-    startup_cmd=(gosu user:user "${startup_cmd[@]}")
+    run_as=(gosu user:user)
+fi
+
+#####################################
+##### Configure graphics driver #####
+
+if [[ ${XDG_SESSION_TYPE} == "wayland" ]]; then
+    msgbox info "Enabling native Wayland"
+    unset DISPLAY # DISPLAY variable needs to be empty for wine to use native wayland
+    if nvidia_proprietary_driver; then
+        msgbox info "Detected nvidia graphics, configuring EGL external platform (wayland)"
+        export __EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/glvnd/egl_vendor.d/10_nvidia.json"
+        # export __EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/egl/egl_external_platform.d/09_nvidia_wayland2.json"
+    fi
+elif [[ ${WINE_DISABLE_EGL} -eq 1 ]]; then
+    msgbox info "Disabling EGL (using GLX instead)"
+    "${run_as[@]}" wine reg.exe add 'HKCU\Software\Wine\X11 Driver' /f /v UseEGL /d N || exit 1
+elif nvidia_proprietary_driver; then
+    msgbox info "Detected nvidia graphics, configuring EGL external platform (xcb)"
+    export __EGL_VENDOR_LIBRARY_FILENAMES="/usr/share/egl/egl_external_platform.d/20_nvidia_xcb.json"
 fi
 
 #########################################
 ##### Launch update or start script #####
+
+msgbox debug "Entrypoint script invoked with arguments: ${*:-none}"
+
+declare -a startup_cmd=("${run_as[@]}")
+
+if [[ ${1:-} == "--install" ]] || [[ ${1:-} == "--update" ]]; then
+    startup_cmd+=(/bin/update_zwift.sh "${1:-}")
+else
+    startup_cmd+=(/bin/run_zwift.sh)
+fi
 
 "${startup_cmd[@]}"

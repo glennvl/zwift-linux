@@ -79,9 +79,8 @@ These environment variables can be used to alter the execution of the zwift bash
 | [`ZWIFT_FG`](#zwift_fg)                                   | `0`                        | If set to `1`, run the container in the foreground  |
 | [`ZWIFT_NO_GAMEMODE`](#zwift_no_gamemode)                 | `0`                        | If set to `1`, don't run game mode                  |
 | [`WINE_EXPERIMENTAL_WAYLAND`](#wine_experimental_wayland) | `0`                        | If set to `1`, use native Wayland                   |
+| [`WINE_DISABLE_EGL`](#wine_disable_egl)                   | `0`                        | If set to `1`, use GLX instead of EGL               |
 | [`NETWORKING`](#networking)                               | `bridge`                   | Sets the type of container networking to use        |
-| [`ZWIFT_UID`](#zwift_uid)                                 | `$(id -u)`                 | Sets the UID that Zwift will run as                 |
-| [`ZWIFT_GID`](#zwift_gid)                                 | `$(id -g)`                 | Sets the GID that Zwift will run as                 |
 | [`VGA_DEVICE_FLAG`](#vga_device_flag)                     |                            | Override container GPU/device flags                 |
 | [`PRIVILEGED_CONTAINER`](#privileged_container)           | `0`                        | If set to `1`, run the container in privileged mode |
 | [`DISABLE_BLUETOOTH`](#disable_bluetooth)                 | `1`                        | If set to `1`, disable bluetooth in the container   |
@@ -652,6 +651,20 @@ This feature is experimental. Reduced performance and other sporadic issues are 
 
 ---
 
+### `WINE_DISABLE_EGL`
+
+If set to `1`, use GLX instead of EGL. Wine uses EGL for OpenGL by default since version 10.17.
+
+| Item              | Description                  |
+|:------------------|:-----------------------------|
+| Allowed values    | `0` - Use EGL for OpenGL.    |
+|                   | `1` - Use GLX for OpenGL.    |
+| Default value     | `0`                          |
+| Commandline usage | `WINE_DISABLE_EGL="1" zwift` |
+| Config file usage | `WINE_DISABLE_EGL="1"`       |
+
+---
+
 ### `NETWORKING`
 
 See also [Connecting Devices](../../getting-started/setup).
@@ -668,52 +681,6 @@ Configure how the container connects to the Internet.
 | Default value     | `bridge`                             |
 | Commandline usage | `NETWORKING="host" zwift`            |
 | Config file usage | `NETWORKING="host"`                  |
-
----
-
-### `ZWIFT_UID`
-
-See also [`ZWIFT_GID`](#zwift_gid), [Remap User UID/GID](../../advanced/remap-user-id).
-
-Use this option to launch Zwift from a different user id.
-
-| Item              | Description              |
-|:------------------|:-------------------------|
-| Allowed values    | number                   |
-| Default value     | `$(id -u)`               |
-| Commandline usage | `ZWIFT_UID="1001" zwift` |
-| Config file usage | `ZWIFT_UID="1001"`       |
-
-{: .warning }
-> It is strongly discouraged to use a `ZWIFT_UID` that is different from your user uid. If you decide to do so anyway, know
-> that:
->
-> - It does not work with podman
-> - It does not work with Wayland
-> - Cats and dogs may start living together
-
----
-
-### `ZWIFT_GID`
-
-See also [`ZWIFT_UID`](#zwift_uid), [Remap User UID/GID](../../advanced/remap-user-id).
-
-Use this option to launch Zwift from a different group id.
-
-| Item              | Description              |
-|:------------------|:-------------------------|
-| Allowed values    | number                   |
-| Default value     | `$(id -g)`               |
-| Commandline usage | `ZWIFT_GID="1001" zwift` |
-| Config file usage | `ZWIFT_GID="1001"`       |
-
-{: .warning }
-> It is strongly discouraged to use a `ZWIFT_GID` that is different from your user gid. If you decide to do so anyway, know
-> that:
->
-> - It does not work with podman
-> - It does not work with Wayland
-> - Cats and dogs may start living together
 
 ---
 
