@@ -127,7 +127,6 @@ uninstall_netbrain_zwift() {
         local file="${1:?}"
 
         msgbox info "  Removing ${file}"
-
         if ! rm -- "${file}" > /dev/null 2>&1; then
             msgbox warning "  Failed to remove ${file}"
         fi
@@ -176,11 +175,6 @@ uninstall_netbrain_zwift() {
 }
 
 install_netbrain_zwift() {
-    exit_failure() {
-        msgbox error "Zwift install failed! 😭"
-        exit 1
-    }
-
     determine_install_location() {
         if invoked_as_root; then
             root_bin="${SYSTEM_BIN_DIR}"
@@ -195,34 +189,21 @@ install_netbrain_zwift() {
         msgbox info "  data     → ${root_share}"
     }
 
-    ask_user_confirmation() {
-        if msgbox question "Are you sure you want to install Zwift?"; then
-            msgbox ok "Proceeding with netbrain/zwift installation"
-        else
-            msgbox info "Aborted netbrain/zwift installation"
-            msgbox warning "Zwift not installed! 😥"
-            exit 2
-        fi
-    }
-
     create_directories() {
         create_directory() {
             local directory="${1:?}"
 
             msgbox info "  Creating directory ${directory}"
-
             if ! mkdir -p "${directory}"; then
-                msgbox error "Could not create ${directory}, aborting"
-                exit_failure
+                msgbox error "Could not create ${directory}"
+                return 1
             fi
         }
 
         msgbox info "Creating directories"
-
-        create_directory "${root_bin}"
-        create_directory "${root_share}/icons/hicolor/scalable/apps"
-        create_directory "${root_share}/applications"
-
+        create_directory "${root_bin}" || return 1
+        create_directory "${root_share}/icons/hicolor/scalable/apps" || return 1
+        create_directory "${root_share}/applications" || return 1
         msgbox ok "Directories created"
     }
 
@@ -230,33 +211,44 @@ install_netbrain_zwift() {
         download_asset() {
             local destination="${1:?}"
             local url="${2:?}"
+            local mode="${3:-}"
+            local tmp_file=""
 
             msgbox info "  Downloading ${url}"
 
-            if ! curl -fsSLo "${destination}" "${url}"; then
-                msgbox error "Downloading ${url} failed, aborting"
-                exit_failure
+            if tmp_file="$(mktemp -q "${destination}.XXXXXX")"; then
+                trap 'rm -f "${tmp_file}"; trap - RETURN' RETURN
+            else
+                msgbox error "Failed to create temporary file"
+                return 1
+            fi
+
+            if ! curl -fsSLo "${tmp_file}" "${url}"; then
+                msgbox error "Downloading ${url} failed"
+                return 1
+            fi
+
+            if [[ -n ${mode} ]] && ! chmod "${mode}" "${tmp_file}"; then
+                msgbox error "Failed to set permissions for ${destination}"
+                return 1
+            fi
+
+            if ! mv "${tmp_file}" "${destination}"; then
+                msgbox error "Failed to replace ${destination} with downloaded file"
+                return 1
             fi
         }
 
         msgbox info "Downloading netbrain/zwift"
-
-        download_asset "${root_bin}/zwift" "${ZWIFT_SCRIPT}"
-        download_asset "${root_share}/icons/hicolor/scalable/apps/zwift.svg" "${ZWIFT_LOGO}"
-        download_asset "${root_share}/applications/Zwift.desktop" "${ZWIFT_DESKTOP_ENTRY}"
-
-        if ! chmod 755 "${root_bin}/zwift"; then
-            msgbox error "Failed to set permissions for ${root_bin}/zwift, aborting"
-            exit_failure
-        fi
-
+        download_asset "${root_bin}/zwift" "${ZWIFT_SCRIPT}" 755 || return 1
+        download_asset "${root_share}/icons/hicolor/scalable/apps/zwift.svg" "${ZWIFT_LOGO}" || return 1
+        download_asset "${root_share}/applications/Zwift.desktop" "${ZWIFT_DESKTOP_ENTRY}" || return 1
         msgbox ok "Download complete"
     }
 
     check_in_path() {
         msgbox info "Checking if 'zwift' is in PATH"
-
-        if case ":${PATH}:" in *":${root_bin}:"*) true ;; *) false ;; esac then
+        if [[ ":${PATH}:" == *":${root_bin}:"* ]]; then
             msgbox info "  ${root_bin} is in your PATH"
             msgbox ok "Zwift can be launched using the 'zwift' command"
         else
@@ -267,11 +259,19 @@ install_netbrain_zwift() {
 
     msgbox info "Preparing to install netbrain/zwift"
     determine_install_location
-    ask_user_confirmation
-    create_directories
-    download_zwift
-    check_in_path
-    msgbox ok "Install complete! 🥳"
+    if msgbox question "Are you sure you want to install Zwift?"; then
+        msgbox ok "Proceeding with netbrain/zwift installation"
+        if create_directories && download_zwift && check_in_path; then
+            msgbox ok "Install complete! 🥳"
+        else
+            msgbox error "Zwift install failed! 😭"
+            exit 1
+        fi
+    else
+        msgbox info "Aborted netbrain/zwift installation"
+        msgbox warning "Zwift not installed! 😥"
+        exit 2
+    fi
 }
 
 echo -e "${COLOR_YELLOW}[!] ${STYLE_BOLD}Easily Zwift on linux!${RESET_STYLE}"
