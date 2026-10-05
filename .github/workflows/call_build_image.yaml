@@ -251,7 +251,10 @@ jobs:
 
         printf -v tag_csv '%s,' "${tags[@]}"
 
-        ( echo "TAGS=${tag_csv%,}"; echo "IMAGE_UPDATED=${updated}" ) >> "${GITHUB_ENV}"
+        {
+            echo "TAGS=${tag_csv%,}"
+            echo "IMAGE_UPDATED=${updated}"
+        } >> "${GITHUB_ENV}"
     - name: Export image
       uses: $/.github/actions/docker-save-artifact
       with:
@@ -261,19 +264,29 @@ jobs:
     - name: Report
       id: report
       run: |
-        ( echo "### Building image 🏗️"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
+        {
+            echo "### Building image 🏗️"
+            echo ""
+        } >> "${GITHUB_STEP_SUMMARY}"
 
         if [[ ${IMAGE_REBUILT} -eq 1 ]]; then
             echo "Performed full rebuild!" >> "${GITHUB_STEP_SUMMARY}"
         elif [[ ${SCRIPTS_UPDATED} -eq 1 ]] || [[ ${ZWIFT_UPDATED} -eq 1 ]]; then
-            ( echo "Updated image **${BASE_IMAGE}**:"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
+            {
+                echo "Updated image **${BASE_IMAGE}**:"
+                echo ""
+            } >> "${GITHUB_STEP_SUMMARY}"
             [[ ${SCRIPTS_UPDATED} -eq 1 ]] && echo "- Updated scripts" >> "${GITHUB_STEP_SUMMARY}"
             [[ ${ZWIFT_UPDATED} -eq 1 ]] && echo "- Updated Zwift to v${VERSION}" >> "${GITHUB_STEP_SUMMARY}"
         else
             echo "No build or update required, image is already up-to-date." >> "${GITHUB_STEP_SUMMARY}"
         fi
 
-        ( echo ""; echo "### Creating tags 📌"; echo "" ) >> "${GITHUB_STEP_SUMMARY}"
+        {
+            echo ""
+            echo "### Creating tags 📌"
+            echo ""
+        } >> "${GITHUB_STEP_SUMMARY}"
 
         if [[ ${NEXT_IMAGE} == "${BASE_IMAGE}" ]]; then
             echo "Nothing to do, tag **${IMAGE}:${TAG}** already exists." >> "${GITHUB_STEP_SUMMARY}"
@@ -284,18 +297,18 @@ jobs:
                 echo "Created tags:" >> "${GITHUB_STEP_SUMMARY}"
             fi
 
-            (
+            {
                 echo ""
                 echo "- *${IMAGE}:latest*"
                 echo "- *${IMAGE}:${TAG}*"
                 echo "- *${IMAGE}:${COMMIT}*"
                 echo "- *${IMAGE}:${DOCKERFILE}*"
                 echo ""
-            ) >> "${GITHUB_STEP_SUMMARY}"
+            } >> "${GITHUB_STEP_SUMMARY}"
         fi
 
-        (
+        {
             echo "image=${IMAGE}:${TAG}"
             echo "updated=${IMAGE_UPDATED}"
             echo "version=${VERSION}"
-        ) >> "${GITHUB_OUTPUT}"
+        } >> "${GITHUB_OUTPUT}"

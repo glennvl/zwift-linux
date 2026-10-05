@@ -288,13 +288,16 @@ jobs:
         REPO: ${{ inputs.repository }}
       run: |
         if [[ ${DRY_RUN} == "true" ]]; then
-            (echo "> Dry-run is active, no tags were actually deleted."; echo "") >> "${GITHUB_STEP_SUMMARY}"
+            {
+                echo "> Dry-run is active, no tags were actually deleted."
+                echo ""
+            } >> "${GITHUB_STEP_SUMMARY}"
         fi
 
         [[ ${MAX_AGE_DAYS} -eq 0 ]] && days_limit="no limit" || days_limit="${MAX_AGE_DAYS} days"
         [[ ${MAX_COUNT} -eq 0 ]] && count_limit="no limit" || count_limit="${MAX_COUNT}"
 
-        (
+        {
             echo "Pruned versions from ${REPO}."
             echo ""
             echo "- Maximum age: ${days_limit}"
@@ -302,7 +305,7 @@ jobs:
             echo ""
             echo "| Version | Age (days) | Status |"
             echo "|:--------|-----------:|:------:|"
-        ) >> "${GITHUB_STEP_SUMMARY}"
+        } >> "${GITHUB_STEP_SUMMARY}"
 
         IFS=" " read -ra versions_array <<< "${VERSIONS}"
         if [[ ${#versions_array[@]} -eq 0 ]]; then
@@ -329,7 +332,11 @@ jobs:
             echo "| \`${version//\\/ }\` | ${age} | ${status} |" >> "${GITHUB_STEP_SUMMARY}"
         done
 
-        (echo ""; echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"; echo "") >> "${GITHUB_STEP_SUMMARY}"
+        {
+            echo ""
+            echo "(🔒 = Protected, ✔️ = Keep, 🚫 = Deleted, ⚠️ = Delete failed)"
+            echo ""
+        } >> "${GITHUB_STEP_SUMMARY}"
 
         if [[ ${DRY_RUN} == "true" ]]; then
             echo "Dry-run: Would delete ${deleted} versions." >> "${GITHUB_STEP_SUMMARY}"
