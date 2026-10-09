@@ -26,6 +26,7 @@ readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly WINE_USER_HOME="${WINE_USER_HOME:?}"
 readonly ZWIFT_DATA_DIR="${ZWIFT_DATA_DIR:?}"
 readonly ZWIFT_INSTALL_DIR="${ZWIFT_INSTALL_DIR:?}"
+readonly ZWIFT_PERMISSIVE_UPDATE="${ZWIFT_PERMISSIVE_UPDATE:-0}"
 
 msgbox() {
     local type="${1:?}" # Type: info, ok, warning, error, debug
@@ -128,8 +129,13 @@ update_zwift_using_launcher() {
 
     # zwift updated to unexpected version?
     if [[ ${zwift_current_version} != "${zwift_latest_version}" ]]; then
-        msgbox error "Zwift updated to unexpected version (Expected: ${zwift_latest_version}, Actual: ${zwift_current_version})"
-        return 1
+        unexpected_update="Zwift updated to unexpected version (Expected: ${zwift_latest_version}, Actual: ${zwift_current_version})"
+        if [[ ${ZWIFT_PERMISSIVE_UPDATE} -eq 1 ]]; then
+            msgbox warning "${unexpected_update}"
+        else
+            msgbox error "${unexpected_update}"
+            return 1
+        fi
     fi
 
     msgbox ok "Zwift updated to version ${zwift_current_version}"
@@ -142,9 +148,6 @@ install_zwift() {
 
     msgbox info "Installing prerequisites using winetricks"
     winetricks -q corefonts dotnet48 d3dcompiler_47 webview2 || return 1
-
-    msgbox info "Enabling Wayland support"
-    wine reg.exe add HKCU\\Software\\Wine\\Drivers /f /v Graphics /d x11,wayland || return 1
 
     msgbox info "Downloading and installing Zwift"
     wget -O /tmp/ZwiftSetup.exe https://cdn.zwift.com/app/ZwiftSetup.exe || return 1
