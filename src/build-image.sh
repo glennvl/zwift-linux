@@ -27,6 +27,7 @@ else
 fi
 
 readonly VERBOSITY="${VERBOSITY:-1}"
+readonly WINE_EXPERIMENTAL_WAYLAND="${WINE_EXPERIMENTAL_WAYLAND:-0}"
 
 msgbox() {
     local type="${1:?}" # Type: info, ok, warning, error, debug
@@ -66,7 +67,9 @@ msgbox info "Preparing to build Zwift image"
 
 # Initialize system environment variables
 readonly DISPLAY="${DISPLAY:-}"
+readonly WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-}"
 readonly XAUTHORITY="${XAUTHORITY:-}"
+readonly XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/${UID}}"
 
 # Initialize script constants
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
@@ -119,12 +122,16 @@ container_args=(
     -e VERBOSITY="${VERBOSITY}"
     -e COLORED_OUTPUT="${COLORED_OUTPUT_SUPPORTED}"
     -e CONTAINER_TOOL="${CONTAINER_TOOL}"
+    -e XDG_RUNTIME_DIR="/tmp"
     -e ZWIFT_PERMISSIVE_UPDATE=1
 )
 
 # Initialize user ids
 if [[ ${CONTAINER_TOOL} == "podman" ]]; then
-    container_args+=(--userns "keep-id:uid=1000,gid=1000")
+    container_args+=(
+        --userns "keep-id:uid=1000,gid=1000"
+        --group-add keep-groups
+    )
 else
     container_args+=(
         -e HOST_UID="${UID}"
@@ -133,29 +140,75 @@ else
 fi
 
 # Configure window manager
-msgbox info "Using X11 window manager"
-# DISPLAY is [host]:displaynumber[.screennumber] but the X11 socket is named
-# by the display number alone, so strip the host prefix and screen suffix.
-x11_display="${DISPLAY#*:}"
-x11_display="${x11_display%.*}"
-if [[ -z ${DISPLAY} ]] || [[ ! -S /tmp/.X11-unix/X${x11_display} ]]; then
-    msgbox error "X11 is not running!"
-    exit 1
+
+is_wayland_supported() {
+    [[ -n ${WAYLAND_DISPLAY} ]] && [[ -S ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY} ]]
+}
+
+is_x11_supported() {
+    local x11_display="${DISPLAY#*:}"
+    x11_display="${x11_display%.*}"
+    [[ -n ${DISPLAY} ]] && [[ -d /tmp/.X11-unix ]] && [[ -S /tmp/.X11-unix/X${x11_display} ]]
+}
+
+window_manager=""
+if [[ ${WINE_EXPERIMENTAL_WAYLAND} -eq 1 ]]; then
+    if is_wayland_supported; then
+        window_manager="Wayland"
+    else
+        msgbox warning "WINE_EXPERIMENTAL_WAYLAND: Window manager is not Wayland, ignoring"
+    fi
 fi
-container_args+=(
-    -e DISPLAY="${DISPLAY}"
-    -v /tmp/.X11-unix:/tmp/.X11-unix
-)
-if [[ -n ${XAUTHORITY} ]]; then
+if [[ -z ${window_manager} ]]; then
+    if is_x11_supported; then
+        if is_wayland_supported; then
+            window_manager="XWayland"
+        else
+            window_manager="XOrg"
+        fi
+    elif is_wayland_supported; then
+        window_manager="Wayland"
+    else # no window manager, tty?
+        msgbox error "No window manager found, neither Wayland nor X11 are supported"
+        exit 1
+    fi
+fi
+
+xhost_access_required=0
+if [[ ${window_manager} == "Wayland" ]]; then
+    msgbox warning "Using experimental native Wayland window manager!"
     container_args+=(
-        -e XAUTHORITY="/tmp/.Xauthority"
-        -v "${XAUTHORITY}:/tmp/.Xauthority"
+        -e WAYLAND_DISPLAY="${WAYLAND_DISPLAY}"
+        -e XDG_SESSION_TYPE="wayland"
+        -v "${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/tmp/${WAYLAND_DISPLAY}"
     )
-elif command_exists xhost && xhost +local: > /dev/null; then
-    msgbox ok "Container X11 access provided through xhost"
-else
-    msgbox error "Container requires X11 access, but invoking xhost failed"
-    exit 1
+elif [[ ${window_manager} == "XWayland" ]] || [[ ${window_manager} == "XOrg" ]]; then
+    msgbox info "Using X11 window manager (${window_manager})"
+
+    container_args+=(
+        -e DISPLAY="${DISPLAY}"
+        -e XDG_SESSION_TYPE="x11"
+        -v /tmp/.X11-unix:/tmp/.X11-unix
+    )
+
+    if [[ -n ${XAUTHORITY} ]]; then
+        container_args+=(
+            -e XAUTHORITY="/tmp/.Xauthority"
+            -v "${XAUTHORITY}:/tmp/.Xauthority"
+        )
+    else
+        msgbox info "XAUTHORITY environment variable not set, container access to X11 needs to be granted with xhost"
+        xhost_access_required=1
+    fi
+fi
+
+if [[ ${xhost_access_required} -eq 1 ]]; then
+    if command_exists xhost && xhost +local: > /dev/null; then
+        msgbox ok "Container X11 access provided through xhost"
+    else
+        msgbox error "Container requires X11 access, but invoking xhost failed"
+        exit 1
+    fi
 fi
 
 # Check for proprietary nvidia driver and set correct device to use
