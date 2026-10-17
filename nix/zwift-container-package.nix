@@ -19,6 +19,7 @@
   zwiftFg ? "",
   zwiftNoGameMode ? "",
   wineExperimentalWayland ? "",
+  wineDisableEgl ? "",
   networking ? "",
   vgaDeviceFlag ? "",
   debug ? "",
@@ -60,6 +61,7 @@ let
     ${pkgs.lib.optionalString (
       wineExperimentalWayland != ""
     ) "export WINE_EXPERIMENTAL_WAYLAND=${wineExperimentalWayland}"}
+    ${pkgs.lib.optionalString (wineDisableEgl != "") "export WINE_DISABLE_EGL=${wineDisableEgl}"}
     ${pkgs.lib.optionalString (networking != "") "export NETWORKING='${networking}'"}
     ${pkgs.lib.optionalString (debug != "") "export DEBUG=${debug}"}
     ${pkgs.lib.optionalString (verbosity != "") "export VERBOSITY='${verbosity}'"}
