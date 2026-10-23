@@ -13,7 +13,7 @@ jobs:
     - name: Checkout repository code
       uses: actions/checkout@v7
     - name: Install bash language tools
-      run: sudo apt-get install -y shellcheck
+      run: sudo apt-get update && sudo apt-get install -y shellcheck
     - name: Check bash scripts for errors and warnings
       run: find . -path ./.git -prune -o -name "*.sh" -exec shellcheck {} +
   bash-check-formatted:
@@ -140,6 +140,6 @@ jobs:
     - name: Checkout repository code
       uses: actions/checkout@v7
     - name: Install yamllint
-      run: sudo apt-get install -y yamllint
+      run: sudo apt-get update && sudo apt-get install -y yamllint
     - name: Check yaml files for errors
       run: yamllint .
