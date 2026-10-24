@@ -3,6 +3,7 @@
   image ? "",
   tag ? "",
   deferredUpdate ? "",
+  enableUnstable ? "",
   dontUpdate ? "",
   dontClean ? "",
   dryRun ? "",
@@ -33,6 +34,7 @@ let
     ${pkgs.lib.optionalString (image != "") "export IMAGE='${image}'"}
     ${pkgs.lib.optionalString (tag != "") "export VERSION='${tag}'"}
     ${pkgs.lib.optionalString (deferredUpdate != "") "export DEFERRED_UPDATE=${deferredUpdate}"}
+    ${pkgs.lib.optionalString (enableUnstable != "") "export ENABLE_UNSTABLE=${enableUnstable}"}
     ${pkgs.lib.optionalString (dontUpdate != "") "export DONT_UPDATE=${dontUpdate}"}
     ${pkgs.lib.optionalString (dontClean != "") "export DONT_CLEAN=${dontClean}"}
     ${pkgs.lib.optionalString (dryRun != "") "export DRYRUN=${dryRun}"}
