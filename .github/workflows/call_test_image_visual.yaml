@@ -36,6 +36,7 @@ jobs:
                 -e DISPLAY=\${DISPLAY} \
                 -e XAUTHORITY=\${XAUTHORITY} \
                 -e CONTAINER_TOOL=docker \
+                -e WINE_DISABLE_EGL=1 \
                 -e ZWIFT_NO_GAMEMODE=1 \
                 --device=/dev/dri \
                 -v /tmp/.X11-unix:/tmp/.X11-unix \
