@@ -1,0 +1,70 @@
+---
+name: Docker save artifact
+description: Save a docker image in artifacts
+inputs:
+  local-image:
+    description: use if image to persist is local, store in artifacts
+    default: ''
+    required: false
+  remote-image:
+    description: use if image to persist exists in container registry
+    default: ''
+    required: false
+  tags:
+    description: csv list of tags to create when loading the image
+    default: ''
+    required: false
+runs:
+  using: composite
+  steps:
+  - name: Validate inputs
+    env:
+      LOCAL_IMAGE: ${{ inputs.local-image }}
+      REMOTE_IMAGE: ${{ inputs.remote-image }}
+    shell: bash
+    run: |
+      if [[ -z ${LOCAL_IMAGE} ]] && [[ -z ${REMOTE_IMAGE} ]]; then
+          echo "::error::Neither local-image nor remote-image are set"
+          exit 1
+      elif [[ -n ${LOCAL_IMAGE} ]] && [[ -n ${REMOTE_IMAGE} ]] ; then
+          echo "::error::Both local-image and remote-image are set"
+          exit 1
+      fi
+  - name: Export image
+    env:
+      LOCAL_IMAGE: ${{ inputs.local-image }}
+      REMOTE_IMAGE: ${{ inputs.remote-image }}
+      TAGS: ${{ inputs.tags }}
+    shell: bash
+    run: |
+      mkdir -p export
+      if [[ -n ${LOCAL_IMAGE} ]]; then
+          echo "Exporting ${IMAGE} to archive"
+          docker save --output export/image.tar "${LOCAL_IMAGE}"
+          echo "${LOCAL_IMAGE}" > export/image.name
+      else
+          echo "Using ${REMOTE_IMAGE} from registry, skipping archive"
+          echo "${REMOTE_IMAGE}" > export/image.name
+      fi
+      echo "${TAGS}" > export/tags.csv
+  - name: Upload image artifacts
+    id: image-artifacts
+    uses: actions/upload-artifact@v7
+    with:
+      name: docker-image-export-archive
+      retention-days: 1
+      path: |
+        export/image.name
+        export/image.tar
+        export/tags.csv
+  - name: Persist image artifacts id
+    env:
+      ARTIFACT_ID: ${{ steps.image-artifacts.outputs.artifact-id }}
+    shell: bash
+    run: |
+      echo "${ARTIFACT_ID}" > export/artifact.id
+  - name: Create artifact for id
+    uses: actions/upload-artifact@v7
+    with:
+      name: docker-image-export-id
+      path: export/artifact.id
