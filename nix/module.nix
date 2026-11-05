@@ -45,6 +45,12 @@ in
       description = "Update after launching Zwift.";
     };
 
+    enableUnstable = mkOption {
+      type = types.bool;
+      default = false;
+      description = "Use the unstable branch.";
+    };
+
     dontUpdate = mkOption {
       type = types.bool;
       default = false;
@@ -214,6 +220,7 @@ in
           ;
         tag = cfg.version;
         deferredUpdate = if cfg.deferredUpdate then "1" else "";
+        enableUnstable = if cfg.enableUnstable then "1" else "";
         dontUpdate = if cfg.dontUpdate then "1" else "";
         dontClean = if cfg.dontClean then "1" else "";
         dryRun = if cfg.dryRun then "1" else "";
