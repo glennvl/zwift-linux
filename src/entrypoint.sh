@@ -1,50 +1,16 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-readonly DEBUG="${DEBUG:-0}"
-if [[ ${DEBUG} -eq 1 ]]; then set -x; fi
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" > /dev/null 2>&1 && pwd)"
+readonly SCRIPT_DIR
 
-readonly COLORED_OUTPUT="${COLORED_OUTPUT:-0}"
-if [[ -t 1 ]] || [[ ${COLORED_OUTPUT} -eq 1 ]]; then
-    readonly COLOR_WHITE="\033[0;37m"
-    readonly COLOR_RED="\033[0;31m"
-    readonly COLOR_GREEN="\033[0;32m"
-    readonly COLOR_BLUE="\033[0;34m"
-    readonly COLOR_YELLOW="\033[0;33m"
-    readonly RESET_STYLE="\033[0m"
-else
-    readonly COLOR_WHITE=""
-    readonly COLOR_RED=""
-    readonly COLOR_GREEN=""
-    readonly COLOR_BLUE=""
-    readonly COLOR_YELLOW=""
-    readonly RESET_STYLE=""
-fi
+source "${SCRIPT_DIR}/lib-logging.sh"
 
-readonly VERBOSITY="${VERBOSITY:-1}"
 readonly HOST_UID="${HOST_UID:-$(id -u user)}"
 readonly HOST_GID="${HOST_GID:-$(id -g user)}"
 readonly WINE_DISABLE_EGL="${WINE_DISABLE_EGL:-0}"
 readonly XDG_SESSION_TYPE="${XDG_SESSION_TYPE:-x11}"
-readonly CONTAINER_TOOL="${CONTAINER_TOOL:?}"
 readonly ZWIFT_VOLUME="${ZWIFT_VOLUME:-}"
-
-msgbox() {
-    local type="${1:?}" # Type: info, ok, warning, error, debug
-    local msg="${2:?}"  # Message: the message to display
-
-    local timestamp=""
-    [[ ${VERBOSITY} -ge 2 ]] && printf -v timestamp '%(%T)T|' -1
-
-    case ${type} in
-        info) [[ ${VERBOSITY} -ge 1 ]] && echo -e "${COLOR_BLUE}[${CONTAINER_TOOL}|${timestamp}*] ${msg}${RESET_STYLE}" ;;
-        ok) echo -e "${COLOR_GREEN}[${CONTAINER_TOOL}|${timestamp}✓] ${msg}${RESET_STYLE}" ;;
-        warning) echo -e "${COLOR_YELLOW}[${CONTAINER_TOOL}|${timestamp}!] ${msg}${RESET_STYLE}" ;;
-        error) echo -e "${COLOR_RED}[${CONTAINER_TOOL}|${timestamp}✗] ${msg}${RESET_STYLE}" >&2 ;;
-        debug) [[ ${VERBOSITY} -ge 3 ]] && echo -e "${COLOR_WHITE}[${CONTAINER_TOOL}|${timestamp}◉] ${msg}${RESET_STYLE}" ;;
-        *) echo "msgbox - unknown type ${type}" >&2 && exit 1 ;;
-    esac
-}
 
 command_exists() {
     local cmd="${1:?}"
@@ -163,9 +129,9 @@ msgbox debug "Entrypoint script invoked with arguments: ${*:-none}"
 declare -a startup_cmd=("${run_as[@]}")
 
 if [[ ${1:-} == "--install" ]] || [[ ${1:-} == "--update" ]]; then
-    startup_cmd+=(/bin/update_zwift.sh "${1:-}")
+    startup_cmd+=("${SCRIPT_DIR}/update.sh" "${1:-}")
 else
-    startup_cmd+=(/bin/run_zwift.sh)
+    startup_cmd+=("${SCRIPT_DIR}/launch.sh")
 fi
 
 "${startup_cmd[@]}"
