@@ -1,0 +1,64 @@
+---
+name: Runner disk space
+'on':
+  pull_request:
+  workflow_dispatch:
+jobs:
+  disk-space:
+    strategy:
+      matrix:
+        runner:
+        - ubuntu-22.04
+        - ubuntu-24.04
+        - ubuntu-26.04
+    name: Disk usage for ${{ matrix.runner }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+    - name: Disk usage before clean-up
+      env:
+        RUNNER: ${{ matrix.runner }}
+      run: |
+        declare -a df_lines=()
+        if df_output="$(df -h)" && [[ -n ${df_output} ]]; then
+            readarray -t df_lines <<< "${df_output}"
+        else
+            echo "::error::df command failed or output is empty"
+            exit 1
+        fi
+
+        {
+            echo "## Disk usage on ${RUNNER} before clean-up"
+            echo ""
+            echo "| Filesystem | Size | Used | Available | Used % | Mounted on |"
+            echo "|:-----------|-----:|-----:|----------:|-------:|:-----------|"
+        } >> "${GITHUB_STEP_SUMMARY}"
+
+        for i in $(seq 2 ${#df_lines[@]}); do
+            read -r fs sz use free pct mnt <<< "${df_lines[$((i - 1))]}"
+            echo "| \`${fs}\` | \`${sz}\` | \`${use}\` | \`${free}\` | \`${pct}\` | \`${mnt}\` |" >> "${GITHUB_STEP_SUMMARY}"
+        done
+    - name: Clean-up
+      uses: netbrain/free-disk-space-action@v0.0.1
+    - name: Disk usage after clean-up
+      env:
+        RUNNER: ${{ matrix.runner }}
+      run: |
+        declare -a df_lines=()
+        if df_output="$(df -h)" && [[ -n ${df_output} ]]; then
+            readarray -t df_lines <<< "${df_output}"
+        else
+            echo "::error::df command failed or output is empty"
+            exit 1
+        fi
+
+        {
+            echo "## Disk usage on ${RUNNER} after clean-up"
+            echo ""
+            echo "| Filesystem | Size | Used | Available | Used % | Mounted on |"
+            echo "|:-----------|-----:|-----:|----------:|-------:|:-----------|"
+        } >> "${GITHUB_STEP_SUMMARY}"
+
+        for i in $(seq 2 ${#df_lines[@]}); do
+            read -r fs sz use free pct mnt <<< "${df_lines[$((i - 1))]}"
+            echo "| \`${fs}\` | \`${sz}\` | \`${use}\` | \`${free}\` | \`${pct}\` | \`${mnt}\` |" >> "${GITHUB_STEP_SUMMARY}"
+        done
